@@ -1,26 +1,19 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import "./AdminDashboard.css";
+import "../admin/AdminDashboard.css";
 
 const NAV_ITEMS = [
-  { label: "Dashboard",          icon: "⊞", path: "/admin",                active: true  },
-  { label: "Teacher Management", icon: "🎓", path: "/admin/teachers"                      },
-  { label: "Student Management", icon: "👥", path: "/admin/students"                      },
-  { label: "Add Course",         icon: "📚", path: "/admin/add-course"                    },
-  { label: "Add Class",          icon: "🏫", path: "/admin/add-class"                     },
-  { label: "Course Mapping",     icon: "🔗", path: "/admin/course-mapping"                },
+  { label: "Dashboard",      icon: "⊞", path: "/student",            active: true },
+  { label: "View Result",    icon: "📊", path: "/student/result"                   },
+  { label: "View Answer Key",icon: "📖", path: "/student/answer-key"               },
 ];
 
 const FEATURE_CARDS = [
-  { label: "Teacher Management", icon: "🎓", sub: "Manage faculty records",   path: "/admin/teachers"         },
-  { label: "Student Management", icon: "👥", sub: "Enrol & update students",  path: "/admin/students"         },
-  { label: "Add Course",         icon: "📚", sub: "Create new courses",       path: "/admin/add-course"       },
-  { label: "Add Class",          icon: "🏫", sub: "Define class sections",    path: "/admin/add-class"        },
-  { label: "Course Mapping",     icon: "🔗", sub: "Assign courses to classes", path: "/admin/course-mapping"  },
+  { label: "View Result",     icon: "📊", sub: "Check your exam scores",       path: "/student/result"     },
+  { label: "View Answer Key", icon: "📖", sub: "Browse approved model answers", path: "/student/answer-key" },
 ];
 
-const AdminDashboard = () => {
-  const admin = { name: "Admin1", role: "System Administrator" };
+const StudentDashboard = () => {
   const navigate = useNavigate();
 
   return (
@@ -30,10 +23,10 @@ const AdminDashboard = () => {
         <h2 className="logo">SAGE</h2>
 
         <div className="user-info">
-          <div className="avatar">{admin.name.charAt(0)}</div>
+          <div className="avatar">S</div>
           <div className="user-details">
-            <h4>{admin.name}</h4>
-            <p>{admin.role}</p>
+            <h4>Ammu</h4>
+            <p>Student</p>
           </div>
         </div>
 
@@ -64,7 +57,7 @@ const AdminDashboard = () => {
         </div>
 
         <h1 className="page-title">
-          Admin <span>Dashboard</span>
+          Student <span>Dashboard</span>
         </h1>
 
         <div className="card-grid">
@@ -85,4 +78,4 @@ const AdminDashboard = () => {
   );
 };
 
-export default AdminDashboard;
+export default StudentDashboard;

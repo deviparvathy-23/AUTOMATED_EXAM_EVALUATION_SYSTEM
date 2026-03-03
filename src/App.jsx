@@ -1,77 +1,65 @@
-<<<<<<< HEAD
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 
-import StudentDashboard from "./items/studentdashboard";
-import ViewAnswerKey from "./items/viewanswerkey";
-import ViewResult from "./items/viewresult";
-=======
-<<<<<<< HEAD
-import { Routes, Route } from "react-router-dom";
-import Teacher from "./Components/Teacher.jsx";
-import Evaluation from "./Components/Evaluation.jsx";
-import ViewResults from "./Components/ViewResults.jsx";
-import ReferenceAnswer from "./Components/ReferenceAnswers.jsx";
-import Revaluation from "./Components/Revaluation.jsx";
-import Login from "./Components/Login.jsx";
-import UploadMaterials from "./Components/UploadMaterials.jsx";
-function App() {
-  return (
-    <Routes>
-      <Route path="/" element={<Teacher />} />
-      <Route path="/teacher" element={<Teacher />} />
-      <Route path="/evaluation" element={<Evaluation />} />
-      <Route path="/upload-materials" element={<UploadMaterials />} />
-      <Route path="/view-mark" element={<ViewResults />} />
-      <Route path="/reference-answer" element={<ReferenceAnswer />} />
-       <Route path="/revaluation" element={<Revaluation />} />
+import Login from "./pages/auth/Login";
 
+/* ========== Student Pages ========== */
+import StudentDashboard from "./pages/student/StudentDashboard";
+import ViewAnswerKey from "./pages/student/ViewStudentAnswer";
+import ViewResult from "./pages/student/ViewStudentResult";
 
-      <Route path="/login" element={<Login />} />
-    </Routes>
-=======
-import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+/* ========== Teacher Pages ========== */
+import Teacher from "./pages/teacher/TeacherDashboard";
+import Evaluation from "./pages/teacher/Evaluation";
+import ViewResults from "./pages/teacher/ViewResults";
+import ReferenceAnswer from "./pages/teacher/ReferenceAnswers";
+import Revaluation from "./pages/teacher/Revaluation";
+import UploadMaterials from "./pages/teacher/UploadMaterials";
+import UpdateMark from "./pages/teacher/UpdateMark";
 
-// Pages
+/* ========== Admin Pages ========== */
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import TeacherManagement from "./pages/admin/TeacherManagement";
 import StudentManagement from "./pages/admin/StudentManagement";
 import AddCourse from "./pages/admin/AddCourse";
 import AddClass from "./pages/admin/AddClass";
 import CourseMapping from "./pages/admin/CourseMapping";
->>>>>>> 2c34cb418a135f9ea9c583845e39b137471ee355
 
 function App() {
   return (
-    <Router>
-      <Routes>
-<<<<<<< HEAD
-        {/* Default page */}
-        <Route path="/" element={<StudentDashboard />} />
+    <Routes>
 
-        {/* Dashboard navigation pages */}
-        <Route path="/answer-key" element={<ViewAnswerKey />} />
-        <Route path="/result" element={<ViewResult />} />
-=======
-        {/* Start directly at AdminDashboard */}
-        <Route path="/" element={<AdminDashboard />} />
+      {/* ===== Login ===== */}
+      <Route path="/login" element={<Login />} />
 
-        {/* Pages navigated from dashboard cards */}
-        <Route path="/admin/teachers" element={<TeacherManagement />} />
-        <Route path="/admin/students" element={<StudentManagement />} />
-        <Route path="/admin/add-course" element={<AddCourse />} />
-        <Route path="/admin/add-class" element={<AddClass />} />
-        <Route path="/admin/course-mapping" element={<CourseMapping />} />
->>>>>>> 2c34cb418a135f9ea9c583845e39b137471ee355
+      {/* ===== Student Routes ===== */}
+      <Route path="/student" element={<StudentDashboard />} />
+      <Route path="/student/answer-key" element={<ViewAnswerKey />} />
+      <Route path="/student/result" element={<ViewResult />} />
 
-        {/* Redirect unknown paths to dashboard */}
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
-    </Router>
-<<<<<<< HEAD
-=======
->>>>>>> f37cfedcc2d28f0907eae169eaa4a700de557ebb
->>>>>>> 2c34cb418a135f9ea9c583845e39b137471ee355
+      {/* ===== Teacher Routes ===== */}
+      <Route path="/teacher" element={<Teacher />} />
+      <Route path="/evaluation" element={<Evaluation />} />
+      <Route path="/upload-materials" element={<UploadMaterials />} />
+      <Route path="/view-mark" element={<ViewResults />} />
+      <Route path="/reference-answer" element={<ReferenceAnswer />} />
+      <Route path="/revaluation" element={<Revaluation />} />
+      <Route path="/update-mark" element={<UpdateMark />} /> 
+      
+      {/* ===== Admin Routes ===== */}
+      <Route path="/admin" element={<AdminDashboard />} />
+      <Route path="/admin/teachers" element={<TeacherManagement />} />
+      <Route path="/admin/students" element={<StudentManagement />} />
+      <Route path="/admin/add-course" element={<AddCourse />} />
+      <Route path="/admin/add-class" element={<AddClass />} />
+      <Route path="/admin/course-mapping" element={<CourseMapping />} />
+
+      {/* ===== Default Redirect ===== */}
+      <Route path="/" element={<Navigate to="/login" />} />
+
+      {/* ===== Fallback ===== */}
+      <Route path="*" element={<Navigate to="/login" />} />
+
+    </Routes>
   );
 }
 
