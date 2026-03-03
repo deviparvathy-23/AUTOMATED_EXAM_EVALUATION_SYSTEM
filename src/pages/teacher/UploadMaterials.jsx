@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../admin/AdminDashboard.css";
 
@@ -37,11 +37,44 @@ const UPLOAD_TILES = [
   },
 ];
 
+/* ── Buffering Modal ── */
+const EvaluatingModal = () => (
+  <div className="eval-overlay">
+    <div className="eval-modal">
+      <div className="eval-spinner">
+        <div className="eval-ring" />
+        <div className="eval-ring eval-ring--2" />
+        <div className="eval-ring eval-ring--3" />
+        <span className="eval-icon">📋</span>
+      </div>
+      <h3 className="eval-title">Evaluating Answers</h3>
+      <p className="eval-subtitle">Please wait while SAGE processes the submissions…</p>
+      <div className="eval-progress">
+        <div className="eval-progress-bar" />
+      </div>
+    </div>
+  </div>
+);
+
 const UploadMaterials = () => {
   const navigate = useNavigate();
+  const [isEvaluating, setIsEvaluating] = useState(false);
+
+  const handleEvaluate = async () => {
+    setIsEvaluating(true);
+    try {
+      // Replace with your actual backend call, e.g.:
+      // const result = await fetch("/api/evaluate", { method: "POST", ... });
+      await new Promise((res) => setTimeout(res, 3000)); // ← placeholder
+      navigate("/view-mark");
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
 
   return (
     <div className="container">
+      {isEvaluating && <EvaluatingModal />}
       {/* ── Sidebar ── */}
       <aside className="sidebar">
         <h2 className="logo">SAGE</h2>
@@ -105,7 +138,7 @@ const UploadMaterials = () => {
 
           <button
             className="com-btn evaluate-btn"
-            onClick={() => navigate("/evaluation")}
+            onClick={handleEvaluate}
           >
             ⚡ Evaluate Answers
           </button>

@@ -4,8 +4,6 @@ import "../admin/AdminDashboard.css";
 
 const NAV_ITEMS = [
   { label: "Dashboard",      icon: "⊞", path: "/student",            active: true },
-  { label: "View Result",    icon: "📊", path: "/student/result"                   },
-  { label: "View Answer Key",icon: "📖", path: "/student/answer-key"               },
 ];
 
 const FEATURE_CARDS = [

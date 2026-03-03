@@ -933,3 +933,129 @@ option {
 .card-grid .dash-card:nth-child(4) { animation: fadeUp .35s ease .26s both; }
 .card-grid .dash-card:nth-child(5) { animation: fadeUp .35s ease .33s both; }
 .card-grid .dash-card:nth-child(6) { animation: fadeUp .35s ease .40s both; }
+
+/* ===================== EVALUATING BUFFERING MODAL ===================== */
+.eval-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(12, 26, 31, 0.80);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.25s ease both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.eval-modal {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--r-xl);
+  padding: 48px 52px 40px;
+  text-align: center;
+  box-shadow: var(--shadow-lg), var(--glow-teal);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-width: 340px;
+  animation: scaleIn 0.3s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Spinner wrapper */
+.eval-spinner {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.eval-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: var(--primary);
+  animation: spin 1.1s linear infinite;
+}
+
+.eval-ring--2 {
+  inset: 10px;
+  border-top-color: var(--accent);
+  animation-duration: 0.85s;
+  animation-direction: reverse;
+}
+
+.eval-ring--3 {
+  inset: 20px;
+  border-top-color: var(--primary);
+  animation-duration: 1.4s;
+  opacity: 0.5;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.eval-icon {
+  font-size: 22px;
+  position: relative;
+  z-index: 1;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1);    opacity: 1;   }
+  50%       { transform: scale(1.15); opacity: 0.7; }
+}
+
+.eval-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: -0.3px;
+}
+
+.eval-subtitle {
+  font-size: 15px;
+  color: var(--text-2);
+  max-width: 260px;
+  line-height: 1.5;
+}
+
+/* Animated progress bar */
+.eval-progress {
+  width: 100%;
+  height: 4px;
+  background: var(--bg-raised);
+  border-radius: var(--r-full);
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.eval-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  border-radius: var(--r-full);
+  animation: progress 2s ease-in-out infinite;
+}
+
+@keyframes progress {
+  0%   { width: 0%;   margin-left: 0%; }
+  50%  { width: 70%;  margin-left: 15%; }
+  100% { width: 0%;   margin-left: 100%; }
+}

@@ -4,10 +4,6 @@ import "../admin/AdminDashboard.css";
 
 const NAV_ITEMS = [
   { label: "Dashboard",        icon: "⊞", path: "/teacher",          active: true },
-  { label: "Evaluation",       icon: "📋", path: "/evaluation"                     },
-  { label: "View Results",     icon: "📊", path: "/view-mark"                      },
-  { label: "Reference Answer", icon: "📖", path: "/reference-answer"               },
-  { label: "Revaluation",      icon: "🔄", path: "/revaluation"                    },
 ];
 
 const FEATURE_CARDS = [

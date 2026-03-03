@@ -4,11 +4,6 @@ import "./AdminDashboard.css";
 
 const NAV_ITEMS = [
   { label: "Dashboard",          icon: "⊞", path: "/admin",                active: true  },
-  { label: "Teacher Management", icon: "🎓", path: "/admin/teachers"                      },
-  { label: "Student Management", icon: "👥", path: "/admin/students"                      },
-  { label: "Add Course",         icon: "📚", path: "/admin/add-course"                    },
-  { label: "Add Class",          icon: "🏫", path: "/admin/add-class"                     },
-  { label: "Course Mapping",     icon: "🔗", path: "/admin/course-mapping"                },
 ];
 
 const FEATURE_CARDS = [
