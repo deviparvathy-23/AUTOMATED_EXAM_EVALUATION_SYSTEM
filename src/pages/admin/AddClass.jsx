@@ -1,23 +1,35 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom"; // Navigation
+import { useNavigate } from "react-router-dom";
 import "./AdminDashboard.css";
 
+const NAV_ITEMS = [
+  { label: "Dashboard",          icon: "⊞", path: "/admin"                  },
+  { label: "Teacher Management", icon: "🎓", path: "/admin/teachers"         },
+  { label: "Student Management", icon: "👥", path: "/admin/students"         },
+  { label: "Add Course",         icon: "📚", path: "/admin/add-course"       },
+  { label: "Add Class",          icon: "🏫", path: "/admin/add-class", active: true },
+  { label: "Course Mapping",     icon: "🔗", path: "/admin/course-mapping"   },
+];
+
 const AddClass = () => {
-  const [classId, setClassId] = useState("");
+  const [classId, setClassId]     = useState("");
   const [className, setClassName] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess]     = useState(false);
+  const navigate = useNavigate();
 
   const handleAddClass = () => {
-    if (classId && className) {
+    if (classId.trim() && className.trim()) {
       setSuccess(true);
       setClassId("");
       setClassName("");
+    } else {
+      alert("Please fill all fields ❌");
     }
   };
 
   return (
     <div className="container">
-      {/* Sidebar */}
+      {/* ── Sidebar ── */}
       <aside className="sidebar">
         <h2 className="logo">SAGE</h2>
 
@@ -29,53 +41,56 @@ const AddClass = () => {
           </div>
         </div>
 
-        {/* Sidebar Links */}
-        <div className="sidebar-cards">
-          <Link to="/" className="sidebar-card">
-            Dashboard
-          </Link>
-          <Link to="/admin/teachers" className="sidebar-card">
-            Teacher Management
-          </Link>
-          <Link to="/admin/students" className="sidebar-card">
-            Student Management
-          </Link>
-          <Link to="/admin/add-course" className="sidebar-card">
-            Add Course
-          </Link>
-          <Link to="/admin/course-mapping" className="sidebar-card">
-            Course Mapping
-          </Link>
-        </div>
+        <ul className="sidebar-cards">
+          {NAV_ITEMS.map(({ label, icon, path, active }) => (
+            <li
+              key={label}
+              className={active ? "active" : ""}
+              onClick={() => navigate(path)}
+            >
+              <span className="nav-icon">{icon}</span>
+              {label}
+            </li>
+          ))}
+        </ul>
+
       </aside>
 
-      {/* Main Content */}
+      {/* ── Main ── */}
       <main className="main">
         <div className="logout-container">
-          <button className="logout-btn-top">Logout</button>
+          <button
+            className="com-btn logout-btn-top"
+            onClick={() => navigate("/login")}
+          >
+            ↩ Logout
+          </button>
         </div>
 
-        <h1 className="page-title">Add Class</h1>
+        <h1 className="page-title">
+          Add <span>Class</span>
+        </h1>
+
         <div className="form-wrapper">
-          <div className="form-card">
+          <div className="com-card form-card">
             <h3>Class Details</h3>
 
             <input
               type="text"
               placeholder="Class ID"
               value={classId}
-              onChange={(e) => setClassId(e.target.value)}
+              onChange={(e) => { setClassId(e.target.value); setSuccess(false); }}
             />
 
             <input
               type="text"
               placeholder="Class Name"
               value={className}
-              onChange={(e) => setClassName(e.target.value)}
+              onChange={(e) => { setClassName(e.target.value); setSuccess(false); }}
             />
 
-            <button className="primary-btn" onClick={handleAddClass}>
-              Add Class
+            <button className="com-btn primary-btn" onClick={handleAddClass}>
+              + Add Class
             </button>
 
             {success && (

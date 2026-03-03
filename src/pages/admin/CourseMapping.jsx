@@ -1,17 +1,26 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom"; // Navigation
-import "./AdminDashboard.css"; // Reusing same CSS
+import { useNavigate } from "react-router-dom";
+import "./AdminDashboard.css";
+
+const NAV_ITEMS = [
+  { label: "Dashboard",          icon: "⊞", path: "/admin"                              },
+  { label: "Teacher Management", icon: "🎓", path: "/admin/teachers"                     },
+  { label: "Student Management", icon: "👥", path: "/admin/students"                     },
+  { label: "Add Course",         icon: "📚", path: "/admin/add-course"                   },
+  { label: "Add Class",          icon: "🏫", path: "/admin/add-class"                    },
+  { label: "Course Mapping",     icon: "🔗", path: "/admin/course-mapping", active: true },
+];
+
+const classes  = ["Class 1", "Class 2", "Class 3"];
+const courses  = ["Math", "Science", "History"];
+const teachers = ["Dr. John Mathew", "Ms. Sarah Lee", "Mr. Alex Kim"];
 
 const CourseMapping = () => {
-  // Placeholder data simulating database values
-  const classes = ["Class 1", "Class 2", "Class 3"];
-  const courses = ["Math", "Science", "History"];
-  const teachers = ["Dr. John Mathew", "Ms. Sarah Lee", "Mr. Alex Kim"];
-
-  const [selectedClass, setSelectedClass] = useState("");
-  const [selectedCourse, setSelectedCourse] = useState("");
+  const [selectedClass,   setSelectedClass]   = useState("");
+  const [selectedCourse,  setSelectedCourse]  = useState("");
   const [selectedTeacher, setSelectedTeacher] = useState("");
   const [success, setSuccess] = useState(false);
+  const navigate = useNavigate();
 
   const handleMapCourse = () => {
     if (selectedClass && selectedCourse && selectedTeacher) {
@@ -19,12 +28,14 @@ const CourseMapping = () => {
       setSelectedClass("");
       setSelectedCourse("");
       setSelectedTeacher("");
+    } else {
+      alert("Please fill all fields ❌");
     }
   };
 
   return (
     <div className="container">
-      {/* Sidebar */}
+      {/* ── Sidebar ── */}
       <aside className="sidebar">
         <h2 className="logo">SAGE</h2>
 
@@ -36,103 +47,72 @@ const CourseMapping = () => {
           </div>
         </div>
 
-        {/* Sidebar Links */}
-        <div className="sidebar-cards">
-          <Link to="/" className="sidebar-card">
-            Dashboard
-          </Link>
-          <Link to="/admin/teachers" className="sidebar-card">
-            Teacher Management
-          </Link>
-          <Link to="/admin/students" className="sidebar-card">
-            Student Management
-          </Link>
-          <Link to="/admin/add-course" className="sidebar-card">
-            Add Course
-          </Link>
-          <Link to="/admin/add-class" className="sidebar-card">
-            Add Class
-          </Link>
-        </div>
+        <ul className="sidebar-cards">
+          {NAV_ITEMS.map(({ label, icon, path, active }) => (
+            <li
+              key={label}
+              className={active ? "active" : ""}
+              onClick={() => navigate(path)}
+            >
+              <span className="nav-icon">{icon}</span>
+              {label}
+            </li>
+          ))}
+        </ul>
+
       </aside>
 
-      {/* Main Content */}
+      {/* ── Main ── */}
       <main className="main">
         <div className="logout-container">
-          <button className="logout-btn-top">Logout</button>
+          <button
+            className="com-btn logout-btn-top"
+            onClick={() => navigate("/login")}
+          >
+            ↩ Logout
+          </button>
         </div>
 
-        <h1 className="page-title">Course Mapping</h1>
+        <h1 className="page-title">
+          Course <span>Mapping</span>
+        </h1>
 
         <div className="form-wrapper">
-          <div className="form-card">
-            <h3>Map Course to Class & Teacher</h3>
+          <div className="com-card form-card">
+            <h3>Map Course to Class &amp; Teacher</h3>
 
-            {/* Class Dropdown */}
             <select
               value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "14px",
-                marginBottom: "20px",
-                borderRadius: "8px",
-                fontSize: "15px",
-                border: "1px solid #ccc",
-              }}
+              onChange={(e) => { setSelectedClass(e.target.value); setSuccess(false); }}
             >
               <option value="">Select Class</option>
-              {classes.map((cls, idx) => (
-                <option key={idx} value={cls}>
-                  {cls}
-                </option>
+              {classes.map((cls, i) => (
+                <option key={i} value={cls}>{cls}</option>
               ))}
             </select>
 
-            {/* Course Dropdown */}
             <select
               value={selectedCourse}
-              onChange={(e) => setSelectedCourse(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "14px",
-                marginBottom: "20px",
-                borderRadius: "8px",
-                fontSize: "15px",
-                border: "1px solid #ccc",
-              }}
+              onChange={(e) => { setSelectedCourse(e.target.value); setSuccess(false); }}
             >
               <option value="">Select Course</option>
-              {courses.map((course, idx) => (
-                <option key={idx} value={course}>
-                  {course}
-                </option>
+              {courses.map((c, i) => (
+                <option key={i} value={c}>{c}</option>
               ))}
             </select>
 
-            {/* Teacher Dropdown */}
             <select
               value={selectedTeacher}
-              onChange={(e) => setSelectedTeacher(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "14px",
-                marginBottom: "20px",
-                borderRadius: "8px",
-                fontSize: "15px",
-                border: "1px solid #ccc",
-              }}
+              onChange={(e) => { setSelectedTeacher(e.target.value); setSuccess(false); }}
             >
               <option value="">Select Teacher</option>
-              {teachers.map((teacher, idx) => (
-                <option key={idx} value={teacher}>
-                  {teacher}
-                </option>
+              {teachers.map((t, i) => (
+                <option key={i} value={t}>{t}</option>
               ))}
             </select>
 
-            <button className="primary-btn" onClick={handleMapCourse}>
-              Map Course
+            <button className="com-btn primary-btn" onClick={handleMapCourse}>
+              🔗 Map Course
             </button>
 
             {success && (
