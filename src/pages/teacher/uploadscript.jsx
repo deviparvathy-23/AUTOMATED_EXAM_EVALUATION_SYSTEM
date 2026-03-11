@@ -120,7 +120,7 @@ const UploadScripts = () => {
     });
 
     const uploadRes = await fetch(
-      "${API_BASE}/api/upload/evaluation-materials",
+      `${API_BASE}/api/upload/evaluation-materials`,
       {
         method: "POST",
         body: formData,
@@ -144,7 +144,7 @@ const UploadScripts = () => {
     console.log("Upload success:", uploadData);
 
     // ---------- Evaluate ----------
-    const evalRes = await fetch("${API_BASE}/api/evaluation/run", {
+    const evalRes = await fetch(`${API_BASE}/api/evaluation/run`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
