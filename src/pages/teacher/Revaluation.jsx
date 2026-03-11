@@ -10,7 +10,7 @@ const Revaluation = () => {
   const [pendingCount, setPendingCount] = useState(0);
   const [selectedReq, setSelectedReq] = useState(null);
 const [newMark, setNewMark] = useState("");
-
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
   // Load pending revaluation requests
   useEffect(() => {
 
@@ -28,7 +28,7 @@ const [newMark, setNewMark] = useState("");
 
     if (!teacher?._id) return;
 
-    fetch(`http://localhost:5000/api/teachers/revaluation-count/${teacher._id}`)
+    fetch(`${API_BASE}/api/teachers/revaluation-count/${teacher._id}`)
       .then(res => res.json())
       .then(data => setPendingCount(data.count))
       .catch(err => console.error(err));
@@ -41,7 +41,7 @@ const [newMark, setNewMark] = useState("");
 
   const submitMark = async (id) => {
 
-  await fetch(`http://localhost:5000/api/teachers/revaluation/${id}`, {
+  await fetch(`${API_BASE}/api/teachers/revaluation/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json"
