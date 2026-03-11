@@ -7,7 +7,7 @@ const NAV_ITEMS = [
   { label: "View Answer Key", icon: "📖", path: "/student/answer-key" },
   { label: "View Result", icon: "📊", path: "/student/result", active: true },
 ];
-
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const ViewResult = () => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user"));
@@ -52,7 +52,7 @@ const ViewResult = () => {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/students/result", {
+      const res = await fetch("${API_BASE}/api/students/result", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -100,7 +100,7 @@ const ViewResult = () => {
     try {
       const savedUser = JSON.parse(localStorage.getItem("user"));
 
-      const res = await fetch("http://localhost:5000/api/students/revaluation", {
+      const res = await fetch("${API_BASE}/api/students/revaluation", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
