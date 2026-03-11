@@ -29,7 +29,7 @@ const ViewResult = () => {
   useEffect(() => {
     const fetchFilters = async () => {
       try {
-        const res = await axios.get("${API_BASE}/api/markmatrix/filters", {
+        const res = await axios.get(`${API_BASE}/api/markmatrix/filters`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -71,7 +71,7 @@ const ViewResult = () => {
     }
 
     try {
-      const res = await axios.get("${API_BASE}/api/markmatrix/results", {
+      const res = await axios.get(`${API_BASE}/api/markmatrix/results`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
