@@ -123,7 +123,7 @@ const ViewAnswerKey = () => {
             className="com-btn logout-btn-top"
             onClick={handleLogout}
           >
-            ↩ Logout
+            ↩ Back
           </button>
         </div>
 
