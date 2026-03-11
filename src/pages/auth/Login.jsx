@@ -60,26 +60,57 @@ const Login = () => {
           LOGIN
   ------------------------- */
 
-  const handleLogin = async () => {
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
-    setError("");
+const handleLogin = async () => {
+  setError("");
 
-    if (!username.trim() || !password.trim()) {
-      setError("Please enter username and password.");
-      return;
+  if (!username.trim() || !password.trim()) {
+    setError("Please enter username and password.");
+    return;
+  }
+
+  let url = "";
+
+  if (role === "student") {
+    url = `${API_BASE}/api/students/login`;
+  } else if (role === "teacher") {
+    url = `${API_BASE}/api/teacherlogin/login`;
+  } else if (role === "admin") {
+    url = `${API_BASE}/api/admin/login`;
+  }
+
+  try {
+    setLoading(true);
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: username, password }),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("role", role);
+
+      let userData;
+      if (role === "student") userData = data.student;
+      else if (role === "teacher") userData = data.teacher;
+      else if (role === "admin") userData = data.admin;
+
+      localStorage.setItem("user", JSON.stringify({ ...userData, role }));
+      navigate(ROLE_ROUTES[role]);
+    } else {
+      setError(data.message || "Invalid credentials");
     }
-
-    let url = "";
-
-    if (role === "student") {
-      url = "http://localhost:5000/api/students/login";
-    } 
-    else if (role === "teacher") {
-      url = "http://localhost:5000/api/teacherlogin/login";
-    } 
-    else if (role === "admin") {
-      url = "http://localhost:5000/api/admin/login";
-    }
+  } catch (err) {
+    setError("Cannot reach backend server.");
+  } finally {
+    setLoading(false);
+  }
+};
 
     try {
 
