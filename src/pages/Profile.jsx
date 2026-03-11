@@ -17,13 +17,13 @@ const Profile = () => {
     let url = "";
 
     if(role === "student")
-      url = "http://localhost:5000/api/students/profile";
+      url = `${API_BASE}/api/students/profile`;
 
     if(role === "teacher")
-      url = "http://localhost:5000/api/teacherlogin/profile";
+      url = `${API_BASE}/api/teacherlogin/profile`;
 
     if(role === "admin")
-      url = "http://localhost:5000/api/admin/profile";
+      url = `${API_BASE}/api/admin/profile`;
 
     const res = await fetch(url,{
       headers:{
