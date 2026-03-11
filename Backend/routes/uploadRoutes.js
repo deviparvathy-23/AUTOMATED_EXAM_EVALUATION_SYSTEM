@@ -5,9 +5,6 @@ import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 const router = express.Router();
 
-/* =========================
-   S3 CLIENT
-========================= */
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
@@ -16,21 +13,15 @@ const s3 = new S3Client({
   },
 });
 
-/* =========================
-   MULTER
-========================= */
 const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
   limits: {
-    fileSize: 25 * 1024 * 1024, // 25 MB per file
+    fileSize: 25 * 1024 * 1024,
   },
 });
 
-/* =========================
-   HELPERS
-========================= */
 const getFolderName = (fieldname) => {
   switch (fieldname) {
     case "question_paper":
@@ -46,14 +37,12 @@ const getFolderName = (fieldname) => {
   }
 };
 
-/* =========================
-   UPLOAD EVALUATION MATERIALS
-   FINAL ENDPOINT:
-   /api/upload/evaluation-materials
-========================= */
 router.post("/evaluation-materials", upload.any(), async (req, res) => {
   try {
+    console.log("=== Upload route hit ===");
+
     const { course, classId, examType, examId } = req.body;
+    console.log("Body:", { course, classId, examType, examId });
 
     if (!course || !classId || !examType || !examId) {
       return res.status(400).json({
@@ -67,11 +56,16 @@ router.post("/evaluation-materials", upload.any(), async (req, res) => {
       });
     }
 
+    console.log("Number of files:", req.files.length);
+
     const uploadedFiles = [];
 
     for (const file of req.files) {
       const folder = getFolderName(file.fieldname);
       const key = `${course}/${classId}/${examType}/${folder}/${file.originalname}`;
+
+      console.log(`Uploading: ${file.originalname}`);
+      console.log(`S3 key: ${key}`);
 
       await s3.send(
         new PutObjectCommand({
@@ -82,6 +76,8 @@ router.post("/evaluation-materials", upload.any(), async (req, res) => {
         })
       );
 
+      console.log(`Uploaded: ${file.originalname}`);
+
       uploadedFiles.push({
         fieldname: file.fieldname,
         originalname: file.originalname,
@@ -89,29 +85,25 @@ router.post("/evaluation-materials", upload.any(), async (req, res) => {
       });
     }
 
+    console.log("All files uploaded. Updating exam status...");
+
     const updatedExam = await Exam.findByIdAndUpdate(
       examId,
       { status: "Active" },
       { new: true }
     );
 
-    if (!updatedExam) {
-      return res.status(404).json({
-        error: "Files uploaded, but exam not found to update status.",
-        uploadedFiles,
-      });
-    }
+    console.log("Exam update result:", updatedExam ? "found" : "not found");
 
     return res.status(200).json({
-      message: "Files uploaded successfully ✅",
+      message: "Files uploaded successfully",
       uploadedFiles,
       exam: updatedExam,
     });
   } catch (err) {
     console.error("Upload error:", err.stack || err);
-
     return res.status(500).json({
-      error: err.message || "Upload failed ❌",
+      error: err.message || "Upload failed",
     });
   }
 });
