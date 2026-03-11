@@ -16,7 +16,12 @@ const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8];
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
-const SemesterSelect = ({ value, onChange, placeholder = "Select Semester", className = "" }) => (
+const SemesterSelect = ({
+  value,
+  onChange,
+  placeholder = "Select Semester",
+  className = "",
+}) => (
   <select
     className={className}
     value={value}
@@ -68,29 +73,34 @@ const StudentManagement = () => {
   const [editEmail, setEditEmail] = useState("");
 
   const fetchClasses = async () => {
-    const res = await fetch( ${API_BASE}/api/classes);
+    const res = await fetch(`${API_BASE}/api/classes`);
     const data = await res.json();
+
     if (!res.ok) throw new Error(data?.message || "Failed to fetch classes");
     setClassesList(Array.isArray(data) ? data : []);
   };
 
- const fetchStudents = async () => {
-  const params = new URLSearchParams();
-  if (search.trim()) params.set("q", search.trim());
-  if (filterClass !== "All") params.set("classId", filterClass);
+  const fetchStudents = async () => {
+    const params = new URLSearchParams();
 
-  const url = params.toString() ? `${API_BASE}/api/students?${params.toString()}` : ${API_BASE}/api/students;
-  console.log("Fetching students from:", url);
+    if (search.trim()) params.set("q", search.trim());
+    if (filterClass !== "All") params.set("classId", filterClass);
 
-  const res = await fetch(url);
-  const data = await res.json();
+    const url = params.toString()
+      ? `${API_BASE}/api/students?${params.toString()}`
+      : `${API_BASE}/api/students`;
 
-  console.log("Selected class:", filterClass);
-console.log("API returned students:", data);
+    console.log("Fetching students from:", url);
 
-  if (!res.ok) throw new Error(data?.message || "Failed to fetch students");
-  setStudents(Array.isArray(data) ? data : []);
-};
+    const res = await fetch(url);
+    const data = await res.json();
+
+    console.log("Selected class:", filterClass);
+    console.log("API returned students:", data);
+
+    if (!res.ok) throw new Error(data?.message || "Failed to fetch students");
+    setStudents(Array.isArray(data) ? data : []);
+  };
 
   useEffect(() => {
     fetchClasses().catch((e) => alert(e.message));
@@ -100,16 +110,26 @@ console.log("API returned students:", data);
     fetchStudents().catch((e) => alert(e.message));
   }, [search, filterClass]);
 
-  const allClasses = ["All", ...Array.from(new Set(classesList.map((c) => c.classId).filter(Boolean))).sort()];
-const filtered = students.filter((s) => {
-  const matchSearch = [s.name, s.rollNo, s.admnNo, s.email, s.classId, s.semester]
-    .filter(Boolean)
-    .some((v) => String(v).toLowerCase().includes(search.toLowerCase()));
+  const allClasses = [
+    "All",
+    ...Array.from(
+      new Set(classesList.map((c) => c.classId).filter(Boolean))
+    ).sort(),
+  ];
 
-  return matchSearch;
-});
+  const filtered = students.filter((s) => {
+    const matchSearch = [s.name, s.rollNo, s.admnNo, s.email, s.classId, s.semester]
+      .filter(Boolean)
+      .some((v) => String(v).toLowerCase().includes(search.toLowerCase()));
 
-  const rollCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+    return matchSearch;
+  });
+
+  const rollCollator = new Intl.Collator(undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+
   const filteredSorted = [...filtered].sort((a, b) =>
     rollCollator.compare(String(a.rollNo || ""), String(b.rollNo || ""))
   );
@@ -133,7 +153,7 @@ const filtered = students.filter((s) => {
         email: newEmail.trim(),
       };
 
-      const res = await fetch(${API_BASE}/api/students, {
+      const res = await fetch(`${API_BASE}/api/students`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -203,7 +223,9 @@ const filtered = students.filter((s) => {
 
     try {
       if (deleteTarget.type === "student") {
-        const res = await fetch(`${API_BASE}/api/students/${deleteTarget.value}`, { method: "DELETE" });
+        const res = await fetch(`${API_BASE}/api/students/${deleteTarget.value}`, {
+          method: "DELETE",
+        });
         const data = await res.json();
         if (!res.ok) throw new Error(data?.message || "Failed to delete student");
       }
@@ -222,7 +244,9 @@ const filtered = students.filter((s) => {
 
   const toggleSelectAll = () =>
     setSelectedIds(
-      selectedIds.length === filteredSorted.length ? [] : filteredSorted.map((s) => s._id)
+      selectedIds.length === filteredSorted.length
+        ? []
+        : filteredSorted.map((s) => s._id)
     );
 
   const handleBatchSemesterUpdate = async () => {
@@ -283,92 +307,93 @@ const filtered = students.filter((s) => {
     setBatchFile(file);
     setBatchStatus("");
   };
-const handleBatchUpload = async () => {
-  if (!batchFile) {
-    alert("Please select a file first ❌");
-    return;
-  }
 
-  try {
-    setBatchStatus("processing");
-
-    const selectedClassId = filterClass !== "All" ? filterClass : "";
-    if (!selectedClassId) {
-      alert("Please select a class first ❌");
-      setBatchStatus("");
+  const handleBatchUpload = async () => {
+    if (!batchFile) {
+      alert("Please select a file first ❌");
       return;
     }
 
-    const buffer = await batchFile.arrayBuffer();
-    const wb = XLSX.read(buffer, { type: "array" });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const raw = XLSX.utils.sheet_to_json(ws, { defval: "" });
+    try {
+      setBatchStatus("processing");
 
-    if (!raw.length) {
-      alert("Excel is empty ❌");
-      setBatchStatus("");
-      return;
-    }
+      const selectedClassId = filterClass !== "All" ? filterClass : "";
+      if (!selectedClassId) {
+        alert("Please select a class first ❌");
+        setBatchStatus("");
+        return;
+      }
 
-    const normalizeRow = (r) => {
-      const obj = {};
-      Object.keys(r).forEach((k) => {
-        obj[String(k).trim().toLowerCase()] = r[k];
+      const buffer = await batchFile.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { defval: "" });
+
+      if (!raw.length) {
+        alert("Excel is empty ❌");
+        setBatchStatus("");
+        return;
+      }
+
+      const normalizeRow = (r) => {
+        const obj = {};
+        Object.keys(r).forEach((k) => {
+          obj[String(k).trim().toLowerCase()] = r[k];
+        });
+        return obj;
+      };
+
+      const rows = raw.map(normalizeRow).map((r) => ({
+        rollNo: String(r.rollno || r["roll no"] || r.roll || "").trim(),
+        name: String(r.name || r.studentname || r["student name"] || "").trim(),
+        email: String(r.email || r["email id"] || r.emailid || "").trim(),
+        classId: selectedClassId,
+      }));
+
+      console.log("Batch rows being sent:", rows);
+
+      const bad = rows.findIndex((r) => !r.rollNo || !r.name || !r.email);
+      if (bad !== -1) {
+        alert(`Row ${bad + 2} missing rollNo/name/email ❌`);
+        setBatchStatus("");
+        return;
+      }
+
+      const res = await fetch(`${API_BASE}/api/students/batch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows }),
       });
-      return obj;
-    };
 
-    const rows = raw.map(normalizeRow).map((r) => ({
-      rollNo: String(r.rollno || r["roll no"] || r.roll || "").trim(),
-      name: String(r.name || r.studentname || r["student name"] || "").trim(),
-      email: String(r.email || r["email id"] || r.emailid || "").trim(),
-      classId: selectedClassId,
-    }));
+      const data = await res.json();
+      console.log("Batch upload response:", data);
 
-    console.log("Batch rows being sent:", rows);
+      if (!res.ok) {
+        throw new Error(
+          (data?.message || "Batch upload failed") +
+            (data?.errors?.length
+              ? `\n${data.errors.map((e) => `Row ${e.row}: ${e.message}`).join("\n")}`
+              : "")
+        );
+      }
 
-    const bad = rows.findIndex((r) => !r.rollNo || !r.name || !r.email);
-    if (bad !== -1) {
-      alert(`Row ${bad + 2} missing rollNo/name/email ❌`);
-      setBatchStatus("");
-      return;
-    }
+      setBatchStatus("done");
+      setBatchFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
 
-    const res = await fetch(`${API_BASE}/api/students/batch`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rows }),
-    });
-
-    const data = await res.json();
-    console.log("Batch upload response:", data);
-
-    if (!res.ok) {
-      throw new Error(
-        data?.message +
-          (data?.errors?.length
-            ? `\n${data.errors.map((e) => `Row ${e.row}: ${e.message}`).join("\n")}`
-            : "")
+      alert(
+        data.failed > 0
+          ? `Batch partially successful. Inserted ${data.inserted}, failed ${data.failed}.`
+          : `Batch upload successful. Inserted ${data.inserted} students.`
       );
+
+      await fetchStudents();
+    } catch (e) {
+      console.error("Batch upload failed:", e);
+      setBatchStatus("");
+      alert(e.message);
     }
-
-    setBatchStatus("done");
-    setBatchFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-
-    alert(
-      data.failed > 0
-        ? `Batch partially successful. Inserted ${data.inserted}, failed ${data.failed}.`
-        : `Batch upload successful. Inserted ${data.inserted} students.`
-    );
-
-    await fetchStudents();
-  } catch (e) {
-    console.error("Batch upload failed:", e);
-    setBatchStatus("");
-    alert(e.message);
-  }
-};
+  };
 
   return (
     <div className="container">
@@ -384,7 +409,11 @@ const handleBatchUpload = async () => {
 
         <ul className="sidebar-cards">
           {NAV_ITEMS.map(({ label, icon, path, active }) => (
-            <li key={label} className={active ? "active" : ""} onClick={() => navigate(path)}>
+            <li
+              key={label}
+              className={active ? "active" : ""}
+              onClick={() => navigate(path)}
+            >
               <span className="nav-icon">{icon}</span>
               {label}
             </li>
@@ -394,7 +423,10 @@ const handleBatchUpload = async () => {
 
       <main className="main">
         <div className="logout-container">
-          <button className="com-btn logout-btn-top" onClick={() => navigate("/login")}>
+          <button
+            className="com-btn logout-btn-top"
+            onClick={() => navigate("/login")}
+          >
             ↩ Logout
           </button>
         </div>
@@ -499,16 +531,32 @@ const handleBatchUpload = async () => {
             <h3>Add New Student</h3>
 
             <div className="tm-form-grid">
-              <input placeholder="Full Name" value={newName} onChange={(e) => setNewName(e.target.value)} />
-              <input placeholder="Roll No" value={newRoll} onChange={(e) => setNewRoll(e.target.value)} />
+              <input
+                placeholder="Full Name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+              />
+              <input
+                placeholder="Roll No"
+                value={newRoll}
+                onChange={(e) => setNewRoll(e.target.value)}
+              />
 
               {filterClass !== "All" ? (
                 <div className="sm-class-locked">
-                  <span>Class: <strong>{filterClass}</strong></span>
+                  <span>
+                    Class: <strong>{filterClass}</strong>
+                  </span>
                 </div>
               ) : (
-                <select className="sm-select" value={newClass} onChange={(e) => setNewClass(e.target.value)}>
-                  <option value="" disabled>Select Class</option>
+                <select
+                  className="sm-select"
+                  value={newClass}
+                  onChange={(e) => setNewClass(e.target.value)}
+                >
+                  <option value="" disabled>
+                    Select Class
+                  </option>
                   {classesList.map((c) => (
                     <option key={c._id || c.classId} value={c.classId}>
                       {c.classId}
@@ -517,7 +565,12 @@ const handleBatchUpload = async () => {
                 </select>
               )}
 
-              <input placeholder="Email Address" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} type="email" />
+              <input
+                placeholder="Email Address"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                type="email"
+              />
             </div>
 
             <button className="com-btn primary-btn" onClick={handleAdd}>
@@ -588,7 +641,10 @@ const handleBatchUpload = async () => {
                 <th style={{ width: "40px" }}>
                   <input
                     type="checkbox"
-                    checked={filteredSorted.length > 0 && selectedIds.length === filteredSorted.length}
+                    checked={
+                      filteredSorted.length > 0 &&
+                      selectedIds.length === filteredSorted.length
+                    }
                     onChange={toggleSelectAll}
                   />
                 </th>
@@ -605,7 +661,9 @@ const handleBatchUpload = async () => {
             <tbody>
               {filteredSorted.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="tm-empty">No students found.</td>
+                  <td colSpan={8} className="tm-empty">
+                    No students found.
+                  </td>
                 </tr>
               ) : (
                 filteredSorted.map((student) =>
@@ -640,9 +698,13 @@ const handleBatchUpload = async () => {
                           value={editSemester}
                           onChange={(e) => setEditSemester(e.target.value)}
                         >
-                          <option value="" disabled>Sem</option>
+                          <option value="" disabled>
+                            Sem
+                          </option>
                           {SEMESTERS.map((s) => (
-                            <option key={s} value={s}>{s}</option>
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
                           ))}
                         </select>
                       </td>
@@ -655,10 +717,16 @@ const handleBatchUpload = async () => {
                         />
                       </td>
                       <td className="tm-actions">
-                        <button className="tm-btn tm-save-btn" onClick={() => handleEditSave(student._id)}>
+                        <button
+                          className="tm-btn tm-save-btn"
+                          onClick={() => handleEditSave(student._id)}
+                        >
                           💾 Save
                         </button>
-                        <button className="tm-btn tm-cancel-btn" onClick={() => setEditingId(null)}>
+                        <button
+                          className="tm-btn tm-cancel-btn"
+                          onClick={() => setEditingId(null)}
+                        >
                           ✕
                         </button>
                       </td>
@@ -675,16 +743,25 @@ const handleBatchUpload = async () => {
                       <td>{student.rollNo}</td>
                       <td>{student.name}</td>
                       <td>{student.admnNo}</td>
-                      <td><span className="tm-badge">{student.classId}</span></td>
-                      <td><span className="sm-sem-badge">{student.semester}</span></td>
+                      <td>
+                        <span className="tm-badge">{student.classId}</span>
+                      </td>
+                      <td>
+                        <span className="sm-sem-badge">{student.semester}</span>
+                      </td>
                       <td>{student.email}</td>
                       <td className="tm-actions">
-                        <button className="tm-btn tm-edit-btn" onClick={() => handleEditOpen(student)}>
+                        <button
+                          className="tm-btn tm-edit-btn"
+                          onClick={() => handleEditOpen(student)}
+                        >
                           ✏️
                         </button>
                         <button
                           className="tm-btn tm-delete-btn"
-                          onClick={() => setDeleteTarget({ type: "student", value: student._id })}
+                          onClick={() =>
+                            setDeleteTarget({ type: "student", value: student._id })
+                          }
                         >
                           🗑️
                         </button>
@@ -702,9 +779,7 @@ const handleBatchUpload = async () => {
         <div className="eval-overlay" onClick={() => setDeleteTarget(null)}>
           <div className="tm-confirm-modal" onClick={(e) => e.stopPropagation()}>
             <h3>Delete Student?</h3>
-            <p>
-              {students.find((s) => s._id === deleteTarget.value)?.name} will be removed.
-            </p>
+            <p>{students.find((s) => s._id === deleteTarget.value)?.name} will be removed.</p>
             <div className="tm-confirm-actions">
               <button className="com-btn" onClick={() => setDeleteTarget(null)}>
                 Cancel
