@@ -140,7 +140,7 @@ const UpdateMark = () => {
       <main className="main">
         <div className="logout-container">
           <button className="com-btn logout-btn-top" onClick={() => navigate("/login")}>
-            ↩ Logout
+            ↩ Back
           </button>
         </div>
 
