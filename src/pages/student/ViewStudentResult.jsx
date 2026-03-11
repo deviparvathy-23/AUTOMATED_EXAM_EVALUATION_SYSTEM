@@ -29,7 +29,7 @@ const ViewResult = () => {
     const fetchCourses = async () => {
       try {
         const res = await fetch(
-          `http://localhost:5000/api/students/courses/${user.rollNo}`
+          `${API_BASE}/api/students/courses/${user.rollNo}`
         );
 
         const data = await res.json();
@@ -52,7 +52,7 @@ const ViewResult = () => {
     }
 
     try {
-      const res = await fetch("${API_BASE}/api/students/result", {
+      const res = await fetch(`${API_BASE}/api/students/result`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -100,7 +100,7 @@ const ViewResult = () => {
     try {
       const savedUser = JSON.parse(localStorage.getItem("user"));
 
-      const res = await fetch("${API_BASE}/api/students/revaluation", {
+      const res = await fetch(`${API_BASE}/api/students/revaluation`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
