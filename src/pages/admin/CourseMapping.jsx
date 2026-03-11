@@ -10,6 +10,7 @@ const NAV_ITEMS = [
 { label: "Manage Class", icon: "🏫", path: "/admin/add-class" },
 { label: "Course Mapping", icon: "🔗", path: "/admin/course-mapping", active: true },
 ];
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 const CourseMapping = () => {
 
