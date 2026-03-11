@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { label: "View Answer Key", icon: "📖", path: "/student/answer-key", active: true },
   { label: "View Result", icon: "📊", path: "/student/result" },
 ];
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 const ViewAnswerKey = () => {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ const ViewAnswerKey = () => {
     const fetchCourses = async () => {
       try {
         const res = await fetch(
-          `http://localhost:5000/api/students/courses/${user.rollNo}`
+          `${API_BASE}/api/students/courses/${user.rollNo}`
         );
 
         const data = await res.json();
@@ -59,7 +60,7 @@ const ViewAnswerKey = () => {
       console.log("ClassId:", user.classId);
 
       const res = await axios.get(
-        `http://localhost:5000/api/reference/student/${encodeURIComponent(
+        `${API_BASE}/api/reference/student/${encodeURIComponent(
           course
         )}/${encodeURIComponent(exam)}/${encodeURIComponent(user.classId)}`
       );
