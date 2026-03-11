@@ -88,7 +88,7 @@ const TeacherClasses = () => {
           return;
         }
 
-        const res = await axios.get("${API_BASE}/api/courseclass/exams", {
+        const res = await axios.get(`${API_BASE}/api/courseclass/exams`, {
           params: {
             teacherId,
             classId: examClass !== "All" ? examClass : undefined,
