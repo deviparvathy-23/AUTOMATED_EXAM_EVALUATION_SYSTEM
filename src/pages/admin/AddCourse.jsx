@@ -10,15 +10,6 @@ const NAV_ITEMS = [
   { label: "Manage Class",       icon: "🏫", path: "/admin/add-class"                },
   { label: "Course Mapping",     icon: "🔗", path: "/admin/course-mapping"           },
 ];
-
-// Sample data — replace with real API fetch
-const INITIAL_COURSES = [
-  { courseId: "CS101", courseName: "Introduction to Programming"  },
-  { courseId: "CS202", courseName: "Data Structures & Algorithms" },
-  { courseId: "CS303", courseName: "Database Management Systems"  },
-  { courseId: "CS404", courseName: "Operating Systems"            },
-  { courseId: "CS505", courseName: "Computer Networks"            },
-];
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 const ManageCourse = () => {
@@ -53,7 +44,7 @@ const ManageCourse = () => {
   }
 
   try {
-    const res = await fetch("http://localhost:5000/api/courses", {
+    const res = await fetch("${API_BASE}/api/courses", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -87,7 +78,7 @@ const ManageCourse = () => {
   const handleDeleteConfirm = async () => {
   try {
     const res = await fetch(
-      `http://localhost:5000/api/courses/${deleteId}`,
+      `${API_BASE}/api/courses/${deleteId}`,
       { method: "DELETE" }
     );
 
