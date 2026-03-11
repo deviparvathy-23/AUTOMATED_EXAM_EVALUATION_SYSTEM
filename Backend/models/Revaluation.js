@@ -27,6 +27,12 @@ const revaluationSchema = new mongoose.Schema({
     required: true
   },
 
+   studentReason: {
+    type: String,
+    default: ""
+  },
+
+
   status: {
     type: String,
     enum: ["pending", "reviewed"],
