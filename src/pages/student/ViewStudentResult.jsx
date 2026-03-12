@@ -137,10 +137,7 @@ const ViewResult = () => {
     0
   );
 
-  const maxTotal = validQuestions.reduce(
-    (sum, q) => sum + Number(q.maxMarks || 0),
-    0
-  );
+ const maxTotal = result?.maxMarks || 0;
 
   const pct = maxTotal ? Math.round((Number(total) / maxTotal) * 100) : 0;
 
