@@ -207,28 +207,44 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
                 </div>
 
-                <div className="revaluation-content-box">
+<div className="revaluation-content-box">
 
-                  <p style={{ marginBottom: "14px" }}>
-                    Revaluation request for{" "}
-                    <strong style={{ color: "var(--text-1)" }}>
-                      {req.examType}
-                    </strong>{" "}
-                    in{" "}
-                    <strong style={{ color: "var(--text-1)" }}>
-                      {req.course}
-                    </strong>, class{" "}
-                    <strong style={{ color: "var(--text-1)" }}>
-                      {req.classId}
-                    </strong>.
-                  </p>
+  <p style={{ marginBottom: "14px" }}>
+    Revaluation request for{" "}
+    <strong style={{ color: "var(--text-1)" }}>
+      {req.examType}
+    </strong>{" "}
+    in{" "}
+    <strong style={{ color: "var(--text-1)" }}>
+      {req.course}
+    </strong>, class{" "}
+    <strong style={{ color: "var(--text-1)" }}>
+      {req.classId}
+    </strong>.
+  </p>
 
-                  <button
-  className="com-btn revalued-btn"
-  onClick={() => setSelectedReq(req)}
->
-  ✏️ Update Mark
-</button>
+  {/* STUDENT REASON */}
+  {req.studentReason && (
+    <div
+      style={{
+        background: "#f5f7fa",
+        border: "1px solid #e5e7eb",
+        padding: "10px",
+        borderRadius: "6px",
+        marginBottom: "12px",
+      }}
+    >
+      <strong>Student Reason:</strong>
+      <p style={{ margin: "5px 0 0 0" }}>{req.studentReason}</p>
+    </div>
+  )}
+
+  <button
+    className="com-btn revalued-btn"
+    onClick={() => setSelectedReq(req)}
+  >
+    ✏️ Update Mark
+  </button>
 
 {selectedReq?._id === req._id && (
 
