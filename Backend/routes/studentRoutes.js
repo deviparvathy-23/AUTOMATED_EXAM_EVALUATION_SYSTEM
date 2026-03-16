@@ -114,7 +114,14 @@ router.get("/courses/:rollNo", async (req, res) => {
     // 4️⃣ extract courses
     const courses = mappings.map(m => m.courseId);
 
-    res.json({ courses });
+res.json({
+  courses,
+  debug: {
+    studentClassId: student.classId,
+    classObjectId: classDoc._id,
+    mappingsFound: mappings.length
+  }
+});
 
   } catch (error) {
 
