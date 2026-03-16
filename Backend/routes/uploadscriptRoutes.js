@@ -20,13 +20,15 @@ const upload = multer({ storage });
 // ── Upload Answer Scripts ────────────────────────────────────────────────
 router.post(
   "/evaluation-materials",
-  upload.array("answer_scripts", 50), // field name must match frontend
+  upload.array("answer_scripts", 50),
   async (req, res) => {
     try {
-      const { course, examType } = req.body;
+      const { course, examType, classId, examId } = req.body;
 
-      if (!course || !examType) {
-        return res.status(400).json({ error: "Course and examType are required." });
+      if (!course || !examType || !classId || !examId) {
+        return res.status(400).json({
+          error: "course, examType, classId and examId are required.",
+        });
       }
 
       if (!req.files || req.files.length === 0) {
@@ -36,13 +38,21 @@ router.post(
       const uploadedFiles = [];
 
       for (const file of req.files) {
-        const key = `${course}/${exam.classId}/${examType}/answer-scripts/${file.originalname}`;
+        if (file.mimetype !== "application/pdf") {
+          return res.status(400).json({
+            error: `Only PDF files are allowed: ${file.originalname}`,
+          });
+        }
+
+        const key = `${course}/${classId}/${examType}/${examId}/answer-scripts/${file.originalname}`;
+
         const params = {
           Bucket: process.env.S3_BUCKET,
           Key: key,
           Body: file.buffer,
           ContentType: file.mimetype,
         };
+
         await s3.send(new PutObjectCommand(params));
         uploadedFiles.push(key);
       }
@@ -53,8 +63,11 @@ router.post(
       });
     } catch (err) {
       console.error("Upload error:", err.stack || err);
-      return res.status(500).json({ error: err.message || "Upload failed ❌" });
+      return res.status(500).json({
+        error: err.message || "Upload failed ❌",
+      });
     }
   }
 );
+
 export default router;
