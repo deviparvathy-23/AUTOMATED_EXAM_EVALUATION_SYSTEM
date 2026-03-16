@@ -109,6 +109,7 @@ router.get("/courses/:rollNo", async (req, res) => {
     const mappings = await CourseMapping
       .find({ classId: classDoc._id })
       .populate("courseId");
+          console.log("Mappings found:", mappings.length);
 
     // 4️⃣ extract courses
     const courses = mappings.map(m => m.courseId);
