@@ -239,20 +239,36 @@ router.post("/run", async (req, res) => {
     const refPrefix = `${basePrefix}/reference-text/`;
     const scriptsPrefix = `${basePrefix}/answer-scripts/`;
 
-    const [qpPdfs, msPdfs, refPdfs, scriptPdfs] = await Promise.all([
+    const [qpPdfs, msPdfs, refPdfs] = await Promise.all([
       listPdfsS3(BUCKET, qpPrefix),
       listPdfsS3(BUCKET, msPrefix),
       listPdfsS3(BUCKET, refPrefix),
-      listPdfsS3(BUCKET, scriptsPrefix),
     ]);
-
+    
+    // 🔥 NEW: decide scripts based on request
+    let scriptPdfs = [];
+    
+    if (scriptKeys && scriptKeys.length > 0) {
+      scriptPdfs = scriptKeys; // ✅ ONLY use uploaded files
+    } else {
+      // optional fallback (you can remove this if you want strict behavior)
+      scriptPdfs = await listPdfsS3(BUCKET, scriptsPrefix);
+    }
+    
+    // validations
     if (!qpPdfs.length) {
-      return res.status(400).json({ error: `No Question Paper PDFs found at prefix: ${qpPrefix}` });
+      return res.status(400).json({
+        error: `No Question Paper PDFs found at prefix: ${qpPrefix}`,
+      });
     }
+    
     if (!scriptPdfs.length) {
-      return res.status(400).json({ error: `No Answer Script PDFs found at prefix: ${scriptsPrefix}` });
+      return res.status(400).json({
+        error: "No scripts provided for evaluation",
+      });
     }
-
+    
+    // pick files
     const qpKey = qpPdfs[0];
     const msKey = msPdfs[0] || null;
     const refKey = refPdfs[0] || null;
