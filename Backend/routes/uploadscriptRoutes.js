@@ -42,7 +42,7 @@ router.post(
           });
         }
 
-        ${course}/${classId}/${examType}/${examId}/answer-scripts/${file.originalname}
+        const key = `${course}/${classId}/${examType}/answer-scripts/${file.originalname}`;
 
         const params = {
           Bucket: process.env.S3_BUCKET,
