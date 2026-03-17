@@ -86,53 +86,50 @@ router.get("/profile", async (req, res) => {
 
 // GET COURSES FOR STUDENT
 router.get("/courses/:rollNo", async (req, res) => {
-
   try {
-
     const { rollNo } = req.params;
 
-    // 1️⃣ find student
     const student = await Student.findOne({ rollNo });
-
     if (!student) {
       return res.status(404).json({ message: "Student not found" });
     }
 
-    // 2️⃣ find class document
     const classDoc = await Class.findOne({ classId: student.classId });
-
     if (!classDoc) {
       return res.status(404).json({ message: "Class not found" });
     }
 
-    // 3️⃣ find course mappings for this class
-    const mappings = await CourseMapping
-      .find({ classId: classDoc._id })
-      .populate("courseId");
-          console.log("Mappings found:", mappings.length);
+    const mappings = await CourseMapping.find({ classId: classDoc._id })
+      .populate("courseId", "courseName");
 
-    // 4️⃣ extract courses
-    const courses = mappings.map(m => m.courseId);
+    console.log("Student rollNo:", student.rollNo);
+    console.log("Student classId string:", student.classId);
+    console.log("Matched Class document:", classDoc);
+    console.log("Mappings count:", mappings.length);
+    console.log("Mappings:", JSON.stringify(mappings, null, 2));
 
-res.json({
-  courses,
-  debug: {
-    studentClassId: student.classId,
-    classObjectId: classDoc._id,
-    mappingsFound: mappings.length
-  }
-});
+    const courses = mappings
+      .filter((m) => m.courseId && m.courseId.courseName)
+      .map((m) => ({
+        _id: m.courseId._id,
+        courseName: m.courseId.courseName,
+      }));
 
-  } catch (error) {
+    console.log("Courses returned:", courses);
 
-    console.error(error);
-
-    res.status(500).json({
-      message: "Server error"
+    return res.json({
+      courses,
+      debug: {
+        studentClassId: student.classId,
+        classObjectId: classDoc._id,
+        mappingsFound: mappings.length,
+        validCoursesReturned: courses.length,
+      },
     });
-
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error" });
   }
-
 });
 
 // GET STUDENT RESULT
