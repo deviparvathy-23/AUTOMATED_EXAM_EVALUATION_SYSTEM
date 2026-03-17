@@ -21,7 +21,6 @@ const FEATURE_CARDS = [
     path: "/student/answer-key",
   },
 ];
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const StudentDashboard = () => {
   const navigate = useNavigate();
 
