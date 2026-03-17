@@ -46,6 +46,7 @@ router.post("/login", async (req, res) => {
       message: "Login successful",
       token,
       student: {
+        _id: student._id,
         name: student.name,
         email: student.email,
         admNo: student.admNo,
@@ -85,11 +86,12 @@ router.get("/profile", async (req, res) => {
 });
 
 // GET COURSES FOR STUDENT
-router.get("/courses/:rollNo", async (req, res) => {
+router.get("/courses/:studentId", async (req, res) => {
   try {
-    const { rollNo } = req.params;
+    const { studentId } = req.params;
 
-    const student = await Student.findOne({ rollNo });
+    const student = await Student.findById(studentId);
+
     if (!student) {
       return res.status(404).json({ message: "Student not found" });
     }
@@ -97,32 +99,26 @@ router.get("/courses/:rollNo", async (req, res) => {
     const classDoc = await Class.findOne({ classId: student.classId });
 
     if (!classDoc) {
-      return res.json({ 
-        debug: "CLASS NOT FOUND",
-        studentClassId: student.classId,
-        courses: []
-      });
+      return res.status(404).json({ message: "Class not found" });
     }
 
     const mappings = await CourseMapping
       .find({ classId: classDoc._id })
       .populate("courseId");
 
-    return res.json({
-      debug: "OK",
-      studentClassId: student.classId,
-      classObjectId: classDoc._id,
-      mappingsFound: mappings.length,
-      courses: mappings.map(m => m.courseId).filter(Boolean)
-    });
+    const courses = mappings.map(m => m.courseId).filter(Boolean);
+
+    res.json({ courses });
 
   } catch (error) {
+
     console.error(error);
     res.status(500).json({ message: "Server error" });
+
   }
+
 });
 
-// GET STUDENT RESULT
 // GET STUDENT RESULT
 router.post("/result", async (req, res) => {
   try {
@@ -177,7 +173,7 @@ router.post("/result", async (req, res) => {
       if (!isNaN(max) && !isNaN(marks)) {
         questions.push({
           question: questionLabel,
-          maxMarks: max,   // FIXED
+          maxMarks: max,
           marks,
           deductionReason: reason,
           excluded: /not counted in total/i.test(reason),
@@ -189,14 +185,15 @@ router.post("/result", async (req, res) => {
 
     const storedTotal = parseFloat(dataCells[dataCells.length - 1]);
 
-res.json({
-  result: {
-    ...result.toObject(),
-    questions,
-    storedTotal: !isNaN(storedTotal) ? storedTotal : null,
-    maxMarks: result.maxMarks   // fetch from DB
-  },
-});
+    res.json({
+      result: {
+        ...result.toObject(),
+        questions,
+        storedTotal: !isNaN(storedTotal) ? storedTotal : null,
+        maxMarks: result.maxMarks
+      },
+    });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
@@ -213,7 +210,6 @@ router.post("/revaluation", async (req, res) => {
 
     const { studentName, rollNo, classId, course, examType, studentReason } = req.body;
 
-    // Check if already requested
     const existing = await Revaluation.findOne({
       rollNo,
       course,
@@ -226,13 +222,10 @@ router.post("/revaluation", async (req, res) => {
       });
     }
 
-    // 🔹 find class document
     const classDoc = await Class.findOne({ classId });
 
-    // 🔹 find course document
     const courseDoc = await Course.findOne({ courseName: course });
 
-    // 🔹 find mapping to get teacherId
     const mapping = await CourseMapping.findOne({
       classId: classDoc?._id,
       courseId: courseDoc?._id
@@ -244,7 +237,7 @@ router.post("/revaluation", async (req, res) => {
       classId,
       course,
       examType,
-      studentReason, 
+      studentReason,
       teacherId: mapping?.teacherId || null
     });
 
