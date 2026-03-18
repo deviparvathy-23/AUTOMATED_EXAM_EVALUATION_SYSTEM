@@ -84,6 +84,28 @@ router.get("/profile", async (req, res) => {
     res.status(401).json({ message: "Unauthorized" });
   }
 });
+// ADD THIS BEFORE the existing /courses/:studentId route
+router.get("/courses/byclass/:classId", async (req, res) => {
+  try {
+    const { classId } = req.params;
+
+    const classDoc = await Class.findOne({ classId });
+    if (!classDoc)
+      return res.status(404).json({ message: "Class not found" });
+
+    const mappings = await CourseMapping
+      .find({ classId: classDoc._id })
+      .populate("courseId");
+
+    const courses = mappings.map(m => m.courseId).filter(Boolean);
+    res.json({ courses });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 
 // GET COURSES FOR STUDENT
 router.get("/courses/:studentId", async (req, res) => {
