@@ -259,65 +259,68 @@ const ViewResult = () => {
               <tbody>
                 {results.map((row) => {
                   const isOpen = expandedRollNo === row.rollNo;
-
                   return (
                     <React.Fragment key={row._id || row.rollNo}>
                       <tr>
                         <td>{row.rollNo}</td>
-                        <td>{row.totalMarks}</td>
-                      <td>{row.maxMarks}</td>
-                      <td>{((row.totalMarks / row.maxMarks) * 100).toFixed(1)}%</td>
+                        <td>{row.total}</td>
+                        <td>{row.maxTotal}</td>
+                        <td>{row.pct}%</td>
                         <td>
                           <button
                             className="com-btn"
                             style={{ padding: "6px 12px", fontSize: "12px" }}
-                            onClick={() =>
-                              setExpandedRollNo(isOpen ? null : row.rollNo)
-                            }
+                            onClick={() => setExpandedRollNo(isOpen ? null : row.rollNo)}
                           >
                             {isOpen ? "Hide" : "View"}
                           </button>
                         </td>
                       </tr>
-
+                
                       {isOpen && (
                         <tr>
                           <td colSpan={5} style={{ background: "#fafafa" }}>
                             <div style={{ padding: "12px 0" }}>
-                              <h4 style={{ marginBottom: "10px" }}>
-                                Roll No: {row.rollNo}
-                              </h4>
-
+                              <h4 style={{ marginBottom: "10px" }}>Roll No: {row.rollNo}</h4>
                               <table className="tm-table">
                                 <thead>
                                   <tr>
                                     <th>Question</th>
                                     <th>Marks</th>
                                     <th>Max</th>
-                                    <th>Reason</th>
+                                    <th>Justification</th>
                                   </tr>
                                 </thead>
                                 <tbody>
-                                 {(row.questions || []).filter((q) => !q.excluded).length > 0 ? (
-  (row.questions || [])
-    .filter((q) => !q.excluded)
-    .map((q) => (
-      <tr key={`${row.rollNo}-${q.question}-${q.max}`}>
-        <td>{q.question}</td>
-        <td>{q.marks}</td>
-        <td>{q.max}</td>
-        <td>
-          {q.marks < q.max ? q.deductionReason : "✓ Full marks"}
-        </td>
-      </tr>
-    ))
-) : (
-  <tr>
-    <td colSpan={4} style={{ textAlign: "center" }}>
-      No results found
-    </td>
-  </tr>
-)}
+                                  {(row.questions || []).filter((q) => !q.excluded).length > 0 ? (
+                                    (row.questions || [])
+                                      .filter((q) => !q.excluded)
+                                      .map((q) => (
+                                        <tr key={`${row.rollNo}-${q.question}`}>
+                                          <td>{q.question}</td>
+                                          <td>{q.marks}</td>
+                                          <td>{q.max}</td>
+                                          <td style={{ maxWidth: "400px", whiteSpace: "normal" }}>
+                                            {q.marks >= q.max
+                                              ? "✓ Full marks"
+                                              : q.deductionReason || "—"}
+                                          </td>
+                                        </tr>
+                                      ))
+                                  ) : (
+                                    <tr>
+                                      <td colSpan={4} style={{ textAlign: "center" }}>
+                                        No question data found
+                                      </td>
+                                    </tr>
+                                  )}
+                                  {/* Totals footer row */}
+                                  <tr style={{ fontWeight: 700, borderTop: "2px solid #ccc" }}>
+                                    <td>Total</td>
+                                    <td>{row.total}</td>
+                                    <td>{row.maxTotal}</td>
+                                    <td>{row.pct}%</td>
+                                  </tr>
                                 </tbody>
                               </table>
                             </div>
