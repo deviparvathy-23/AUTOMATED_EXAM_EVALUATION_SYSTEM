@@ -137,48 +137,42 @@ const parseResultTableForDisplay = (resultTable) => {
     .map((r) => r.trim())
     .filter((r) => r.startsWith("|"));
 
+  // Need at least header, separator, data row
   if (rows.length < 3) {
     return { questions: [], storedTotal: null };
   }
 
-  // Parse header and data cells properly
-  const parseRow = (row) =>
-    row.split("|").map((c) => c.trim()).filter((_, i, arr) => i > 0 && i < arr.length - 1 || arr.length === 1);
+  const splitRow = (row) =>
+    row.split("|").map((c) => c.trim()).filter(Boolean);
 
-  const headerCells = rows[0].split("|").map((c) => c.trim()).filter(Boolean);
-  const dataCells   = rows[2].split("|").map((c) => c.trim()).filter(Boolean);
+  const headerCells = splitRow(rows[0]);
+  // rows[1] is the separator line (---|---|...), skip it
+  const dataCells = splitRow(rows[2]);
 
-  // headerCells[0] = "Roll No", dataCells[0] = actual roll number
-  // Structure: Roll No | Q1 | Max Marks | Marks Awarded | Justification | Q2 | ... | Total Marks
+  // headerCells: ["Roll No", "Q1", "Max Marks", "Marks Awarded", "Justification", "Q2", ...]
+  // dataCells:   ["42",      "3",  "2",          "Correct...",    "3",  "3", ...]
 
   const questions = [];
-  let i = 1; // skip Roll No
 
-  while (i < headerCells.length) {
-    const label = headerCells[i];
+  // Find all Q column positions in header
+  headerCells.forEach((label, i) => {
+    if (!label.toLowerCase().startsWith("q")) return;
+    if (label.toLowerCase().includes("total")) return;
 
-    // Stop before Total Marks
-    if (label.toLowerCase().includes("total")) break;
+    // Q is at index i in header
+    // Corresponding data: dataCells[i] = max, dataCells[i+1] = marks, dataCells[i+2] = justification
+    const max          = Number(dataCells[i])     || 0;
+    const marksAwarded = Number(dataCells[i + 1]) || 0;
+    const reason       = dataCells[i + 2]         || "";
 
-    // Only process Q-prefixed headers
-    if (label.toLowerCase().startsWith("q")) {
-      const max          = Number(dataCells[i + 1]) || 0;
-      const marksAwarded = Number(dataCells[i + 2]) || 0;
-      const reason       = dataCells[i + 3] || "";
-
-      questions.push({
-        question: label,
-        max: isNaN(max) ? 0 : max,
-        marks: isNaN(marksAwarded) ? 0 : marksAwarded,
-        deductionReason: reason || (marksAwarded === 0 ? "Not attempted" : ""),
-        excluded: /not counted in total/i.test(reason),
-      });
-
-      i += 4; // Q label + Max Marks + Marks Awarded + Justification
-    } else {
-      i++;
-    }
-  }
+    questions.push({
+      question:        label,
+      max:             isNaN(max) ? 0 : max,
+      marks:           isNaN(marksAwarded) ? 0 : marksAwarded,
+      deductionReason: reason || (marksAwarded === 0 ? "Not attempted" : ""),
+      excluded:        /not counted in total/i.test(reason),
+    });
+  });
 
   // Total is always the last data cell
   const storedTotal = Number(dataCells[dataCells.length - 1]);
