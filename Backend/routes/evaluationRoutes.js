@@ -7,7 +7,8 @@ import s3 from "../utils/s3Client.js";
 import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand } from "@aws-sdk/client-s3";
 import { GoogleGenAI } from "@google/genai";
 
-import MarkMatrix from "../models/MarkMatrix.js";
+import MarkMatrix    from "../models/MarkMatrix.js";   // ✅ existing — evaluation results
+import Result        from "../models/Result.js";        // ✅ new — OCR extracted text
 import ReferenceAnswer from "../models/ReferenceAnswer.js";
 import { Buffer } from "buffer";
 
@@ -40,11 +41,10 @@ function extractTotal(resultTable) {
 }
 
 // ─── Helper: extract max marks from Gemini's MAX_MARKS: line ─────────────────
-// Gemini reads the question paper directly and outputs the total max marks
 function extractMaxMarks(fullText) {
   const match = fullText.match(/MAX_MARKS:\s*([\d.]+)/i);
   if (!match) {
-    console.log("🔍 [extractMaxMarks] MAX_MARKS line not found in Gemini response");
+    console.log("🔍 [extractMaxMarks] MAX_MARKS line not found");
     return null;
   }
   const n = Number(match[1]);
@@ -124,7 +124,7 @@ CRITICAL FIRST STEP — READ THE QUESTION PAPER CAREFULLY:
 * The number of bullet points for each answer MUST exactly equal the marks assigned to that question.
 
 ANSWER FORMAT RULES:
-* For every question: number of bullet points = number of marks for that question (e.g., 2-mark question → 2 bullets, 5-mark question → 5 bullets, 10-mark question → 10 bullets).
+* For every question: number of bullet points = number of marks for that question.
 * Each bullet point = one scorable fact/concept (1 sentence max, under 20 words).
 * No paragraphs, no elaboration, no examples unless directly mark-worthy.
 * Every point must be something an examiner would award a mark for.
@@ -201,7 +201,7 @@ async function generateReferenceAnswers(ai, course, classId, examType, qpKey, qp
 const router = express.Router();
 const MODEL = "gemini-2.5-flash";
 
-// ✅ evalType is stressed at the top, middle, and bottom of the prompt
+// ✅ evalType stressed 3 times in prompt
 const buildEvalPrompt = (evalType) => `
 You are an expert academic evaluator.
 
@@ -244,7 +244,7 @@ MAX_MARKS: [total maximum marks from the question paper]
 
 | Roll No | Q1 | Max Marks | Marks Awarded | Justification | Q2 | Max Marks | Marks Awarded | Justification | ... (repeat for ALL questions) | Total Marks |
 |---|---|---|---|---|---|---|---|---|---|
-| [rollNo] | [Q1 label] | [max] | [awarded] | [justification] | [Q2 label] | [max] | [awarded] | [justification] | ... | [total awarded] |
+| [rollNo] | [Q1 label] | [max] | [awarded] | [justification] | ... | [total awarded] |
 
 CRITICAL OUTPUT RULES:
 - Line 1 MUST be: MAX_MARKS: [number]
@@ -342,6 +342,20 @@ router.post("/run", async (req, res) => {
 
         const scriptBytes = await downloadFromS3(BUCKET, scriptKey);
 
+        // ✅ Check Result collection for pre-extracted OCR text
+        const ocrRecord = await Result.findOne(
+          { scriptKey },
+          { extractedText: 1, ocrStatus: 1 }
+        ).lean();
+
+        const hasOcrText = ocrRecord?.ocrStatus === "done" && !!ocrRecord?.extractedText;
+
+        if (hasOcrText) {
+          console.log(`  ✅ Using pre-extracted OCR text from Result collection (${ocrRecord.extractedText.length} chars)`);
+        } else {
+          console.log(`  ℹ️  No OCR text found in Result — Gemini will read PDF directly`);
+        }
+
         const contents = [
           { role: "user", parts: [{ text: buildEvalPrompt(evalType) }] },
           {
@@ -364,10 +378,19 @@ router.post("/run", async (req, res) => {
           });
         }
 
-        contents.push({
-          role: "user",
-          parts: [{ inlineData: { data: scriptBytes.toString("base64"), mimeType: guessMime(scriptKey) } }],
-        });
+        // ✅ if OCR text exists in Result → send as text (transparent + accurate)
+        // otherwise fall back to raw PDF → Gemini Vision
+        if (hasOcrText) {
+          contents.push({
+            role: "user",
+            parts: [{ text: `Student Answer Sheet (Roll No: ${rollNo}):\n\n${ocrRecord.extractedText}` }],
+          });
+        } else {
+          contents.push({
+            role: "user",
+            parts: [{ inlineData: { data: scriptBytes.toString("base64"), mimeType: guessMime(scriptKey) } }],
+          });
+        }
 
         const stream = await ai.models.generateContentStream({
           model: MODEL,
@@ -382,7 +405,7 @@ router.post("/run", async (req, res) => {
           finalText += text;
         }
 
-        // ✅ extract maxMarks from full Gemini response BEFORE slicing the table
+        // ✅ extract maxMarks from Gemini's MAX_MARKS: line
         const maxMarks = extractMaxMarks(finalText);
 
         const tableStart = finalText.indexOf("| Roll No");
@@ -395,23 +418,24 @@ router.post("/run", async (req, res) => {
 
         console.log(`📊 rollNo=${rollNo} | totalMarks=${totalMarks} | maxMarks=${maxMarks}`);
 
+        // ✅ save evaluation result to MarkMatrix (existing collection — untouched)
         await MarkMatrix.updateOne(
           { scriptKey },
           {
             $set: {
               rollNo, scriptKey, classId, course, examType,
               resultTable,
-              totalMarks,   // marks awarded to student
-              maxMarks,     // total max marks from question paper
+              totalMarks,
+              maxMarks,
               status: "done",
-              error: "",
+              error:  "",
             },
           },
           { upsert: true }
         );
 
         if (exists) updatedExisting++; else newlySaved++;
-        console.log(`✅ Saved: rollNo=${rollNo} | totalMarks=${totalMarks} | maxMarks=${maxMarks}`);
+        console.log(`✅ Saved to MarkMatrix: rollNo=${rollNo} | totalMarks=${totalMarks} | maxMarks=${maxMarks}`);
 
       } catch (e) {
         console.error("❌ Failed script:", scriptKey, e?.message || e);
@@ -422,9 +446,9 @@ router.post("/run", async (req, res) => {
             $set: {
               rollNo, scriptKey, classId, course, examType,
               resultTable: "",
-              status: "failed",
-              error: e?.message || String(e),
-              updatedAt: new Date(),
+              status:      "failed",
+              error:       e?.message || String(e),
+              updatedAt:   new Date(),
             },
             $setOnInsert: { createdAt: new Date() },
           },
