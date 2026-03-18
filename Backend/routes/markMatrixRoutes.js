@@ -228,34 +228,22 @@ router.get("/results", authTeacher, async (req, res) => {
       normalize(row.classId) === reqClass
   )
   .map((row) => {
-    const parsed = parseResultTableForDisplay(row.resultTable);
-    const questions = parsed.questions;
+  const parsed = parseResultTableForDisplay(row.resultTable);
 
-    // Use the stored total from resultTable (e.g. 41.5), NOT row.totalMarks which is 0
-    const total = parsed.storedTotal !== null
-      ? parsed.storedTotal
-      : questions
-          .filter((q) => !q.excluded)
-          .reduce((sum, q) => sum + parseFloat(q.marks || 0), 0);
+  const total    = row.totalMarks;   // ← directly from DB
+  const maxTotal = row.maxMarks;     // ← directly from DB
+  const pct      = maxTotal > 0
+    ? Math.round((total / maxTotal) * 100)
+    : 0;
 
-    // Max = sum of ALL question max marks (what the student could have scored)
-    const maxTotal = questions.reduce(
-      (sum, q) => sum + parseFloat(q.max || 0), 0
-    );
-
-    const pct = maxTotal > 0
-      ? Math.round((parseFloat(total) / maxTotal) * 100)
-      : 0;
-
-    return {
-      ...row,
-      questions,
-      storedTotal: parsed.storedTotal,
-      total,
-      maxTotal,
-      pct,
-    };
-  });
+  return {
+    ...row,
+    questions: parsed.questions,
+    total,
+    maxTotal,
+    pct,
+  };
+});
 
     filteredRows.sort((a, b) =>
       String(a.rollNo || "").localeCompare(String(b.rollNo || ""), undefined, {
