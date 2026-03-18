@@ -30,22 +30,53 @@ const { createCanvas } = require("canvas");
 pdfjsLib.GlobalWorkerOptions.workerSrc = false;
 
 async function pdfToPageBuffers(pdfBuffer) {
+  const { createCanvas } = require("canvas");
+
+  // ✅ Provide a NodeCanvasFactory so pdfjs knows how to create canvases
+  const NodeCanvasFactory = {
+    create(width, height) {
+      const canvas = createCanvas(width, height);
+      const context = canvas.getContext("2d");
+      return { canvas, context };
+    },
+    reset(canvasAndContext, width, height) {
+      canvasAndContext.canvas.width = width;
+      canvasAndContext.canvas.height = height;
+    },
+    destroy(canvasAndContext) {
+      canvasAndContext.canvas.width = 0;
+      canvasAndContext.canvas.height = 0;
+      canvasAndContext.canvas = null;
+      canvasAndContext.context = null;
+    },
+  };
+
   const data = new Uint8Array(pdfBuffer);
-  const pdfDoc = await pdfjsLib.getDocument({ data }).promise;
+  const pdfDoc = await pdfjsLib.getDocument({
+    data,
+    canvasFactory: NodeCanvasFactory,   // ✅ key fix
+  }).promise;
+
   const pages = [];
 
   for (let i = 1; i <= pdfDoc.numPages; i++) {
     const page = await pdfDoc.getPage(i);
     const viewport = page.getViewport({ scale: 1.5 });
-    const canvas = createCanvas(viewport.width, viewport.height);
-    const ctx = canvas.getContext("2d");
 
-    await page.render({ canvasContext: ctx, viewport }).promise;
+    const canvasAndContext = NodeCanvasFactory.create(viewport.width, viewport.height);
+
+    await page.render({
+      canvasContext: canvasAndContext.context,
+      viewport,
+      canvasFactory: NodeCanvasFactory,
+    }).promise;
 
     pages.push({
       pageNum: i,
-      buffer: canvas.toBuffer("image/jpeg", { quality: 0.85 }),
+      buffer: canvasAndContext.canvas.toBuffer("image/jpeg", { quality: 0.85 }),
     });
+
+    NodeCanvasFactory.destroy(canvasAndContext);
   }
 
   return pages;
