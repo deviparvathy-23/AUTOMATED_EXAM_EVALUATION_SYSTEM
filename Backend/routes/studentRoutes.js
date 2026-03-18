@@ -112,8 +112,9 @@ router.get("/courses/:studentId", async (req, res) => {
   try {
     const { studentId } = req.params;
 
-    // FIX: use rollNo instead of _id
-    const student = await Student.findOne({ rollNo: studentId });
+    const student = await Student.findOne({
+      rollNo: Number(studentId),
+    });
 
     if (!student) {
       return res.status(404).json({ message: "Student not found" });
@@ -125,17 +126,14 @@ router.get("/courses/:studentId", async (req, res) => {
       return res.status(404).json({ message: "Class not found" });
     }
 
-    const mappings = await CourseMapping
-      .find({ classId: classDoc._id })
-      .populate("courseId");
+    const mappings = await CourseMapping.find({ classId: classDoc._id }).populate("courseId");
 
-    const courses = mappings.map(m => m.courseId).filter(Boolean);
+    const courses = mappings.map((m) => m.courseId).filter(Boolean);
 
     res.json({ courses });
-
   } catch (error) {
     console.error("COURSE FETCH ERROR:", error);
-    res.status(500).json({ message: error.message }); // show real error
+    res.status(500).json({ message: error.message });
   }
 });
 
