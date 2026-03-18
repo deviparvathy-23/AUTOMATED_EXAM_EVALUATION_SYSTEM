@@ -489,7 +489,7 @@ const StudentManagement = () => {
 
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
             <button
-              className="com-btn tm-add-btn primary-btn"
+              className="com-btn primary-btn inline-btn"
               onClick={() => {
                 if (!showAddForm && filterClass !== "All") setNewClass(filterClass);
                 if (showAddForm) setNewClass("");
