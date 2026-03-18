@@ -26,7 +26,7 @@ const pdfjsLib = (() => {
   const p = require("pdfjs-dist/legacy/build/pdf.js");
   return p.default ?? p;
 })();
-const { createCanvas } = require("canvas");
+
 pdfjsLib.GlobalWorkerOptions.workerSrc = false;
 
 async function pdfToPageBuffers(pdfBuffer) {
