@@ -165,17 +165,16 @@ async function generateReferenceAnswers(ai, course, classId, examType, qpKey, qp
     contents,
   });
 
-  let  finalText= "";
+  let finalText= "";
   for await (const chunk of stream) {
     const text =
       chunk?.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
      finalText+= text;
   }
 
-  if (!) throw new Error("Empty reference answer result from Gemini");
-
+  if (!finalText) throw new Error("Empty reference answer result from Gemini");
   const s3Key = `${course}/${classId}/${examType}/reference-answers/reference.pdf`;
-  const pdfBuffer = await textToPDFBuffer();
+  const pdfBuffer = await textToPDFBuffer(finalText);
   await uploadToS3(BUCKET, s3Key, pdfBuffer, "application/pdf");
 
   const refAnswer = await ReferenceAnswer.findOneAndUpdate(
@@ -351,11 +350,11 @@ router.post("/run", async (req, res) => {
 
         const stream = await ai.models.generateContentStream({
           model: MODEL,
-          config: { temperature: 0.1, topP: 0.9, topK: 10, maxOutputTokens: 16384 },
+          config: { temperature: 0.1, topP: 0.9, topK: 10, maxOutputTokens: 32768 },
           contents,
         });
 
-        let  = "";
+        let finalText= "";
         for await (const chunk of stream) {
           const text =
             chunk?.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
