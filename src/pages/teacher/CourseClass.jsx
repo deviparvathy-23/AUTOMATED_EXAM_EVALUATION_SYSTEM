@@ -5,11 +5,11 @@ import "../admin/AdminDashboard.css";
 
 const NAV_ITEMS = [
   { label: "Dashboard", icon: "⊞", path: "/teacher" },
-  { label: "My Classes", icon: "🏫", path: "/teacher/classes", active: true },
-  { label: "Evaluation", icon: "📋", path: "/evaluation" },
+  { label: "Evaluation", icon: "📋", path: "/evaluation"},
   { label: "View Results", icon: "📊", path: "/view-mark" },
   { label: "Reference Answer", icon: "📖", path: "/reference-answer" },
   { label: "Revaluation", icon: "🔄", path: "/revaluation" },
+  { label: "My Classes",icon:"🏫",path:"/courseclass", active: true},
 ];
 
 const TABS = ["Classes & Students", "Courses", "Exams"];
