@@ -152,7 +152,9 @@ const UploadMaterials = () => {
       }
 
       console.log("Upload success:", uploadData);
-      const scriptKeys = uploadData?.files?.answer_scripts || [];
+      const scriptKeys = Array.isArray(uploadData?.uploadedFiles)
+      ? uploadData.uploadedFiles.map(f => ({ key: f.key }))
+      : [];
       console.log("Scripts to evaluate:", scriptKeys);
       if (!scriptKeys.length) {
       throw new Error("No answer scripts uploaded properly");
