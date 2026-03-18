@@ -232,34 +232,27 @@ router.get("/results", authTeacher, async (req, res) => {
       )
       .map((row) => {
         const parsed = parseResultTableForDisplay(row.resultTable);
-        const questions = parsed.questions;
-
-// marks obtained
-let total = parsed.storedTotal;
-
-if (total === null) {
-  total = questions.reduce((sum, q) => sum + Number(q.marks || 0), 0);
-}
-
-// max marks should only include questions that actually contributed marks
-const maxTotal = questions.reduce((sum, q) => {
-  if (Number(q.marks) > 0 || q.marks === 0) {
-    return sum + Number(q.max || 0);
-  }
-  return sum;
-}, 0);
-
-        const pct = maxTotal ? Math.round((Number(total) / maxTotal) * 100) : 0;
-
-        return {
-          ...row,
-          questions: parsed.questions,
-          storedTotal: parsed.storedTotal,
-          total,
-          maxTotal,
-          pct,
-        };
-      });
+   const questions = parsed.questions;
+   
+   // Use stored total if available, otherwise sum marks awarded
+   const total = parsed.storedTotal !== null
+     ? parsed.storedTotal
+     : questions.reduce((sum, q) => sum + Number(q.marks || 0), 0);
+   
+   // Max = sum of ALL questions including unattempted ones
+   const maxTotal = questions.reduce((sum, q) => sum + Number(q.max || 0), 0);
+   
+   const pct = maxTotal > 0 ? Math.round((Number(total) / maxTotal) * 100) : 0;
+   
+           return {
+             ...row,
+             questions: parsed.questions,
+             storedTotal: parsed.storedTotal,
+             total,
+             maxTotal,
+             pct,
+           };
+         });
 
     filteredRows.sort((a, b) =>
       String(a.rollNo || "").localeCompare(String(b.rollNo || ""), undefined, {
