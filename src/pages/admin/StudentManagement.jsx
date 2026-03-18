@@ -502,7 +502,7 @@ const StudentManagement = () => {
             </button>
 
             <button
-              className="com-btn tm-add-btn"
+              className="com-btn ghost-btn inline-btn""
               onClick={() => {
                 setShowBatch((p) => !p);
                 setShowAddForm(false);
@@ -513,7 +513,7 @@ const StudentManagement = () => {
             </button>
 
             <button
-              className="com-btn tm-add-btn"
+              className="com-btn ghost-btn inline-btn""
               onClick={() => {
                 setShowBatchSem((p) => !p);
                 setShowAddForm(false);
