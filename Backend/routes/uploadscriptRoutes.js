@@ -1,8 +1,7 @@
 import express from "express";
 import multer from "multer";
 import path from "path";
-import { createRequire } from "module";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { PutObjectCommand, GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import Groq from "groq-sdk";
 import Result from "../models/Result.js";
 
@@ -20,92 +19,41 @@ const s3 = new S3Client({
 const storage = multer.memoryStorage();
 const upload  = multer({ storage });
 
-// ── PDF → JPEG page buffers ───────────────────────────────────────────────────
-const require = createRequire(import.meta.url);
-const pdfjsLib = (() => {
-  const p = require("pdfjs-dist/legacy/build/pdf.js");
-  return p.default ?? p;
-})();
-pdfjsLib.GlobalWorkerOptions.workerSrc = false;
-
-async function pdfToPageBuffers(pdfBuffer) {
-  const { createCanvas } = require("canvas");
-
-  const NodeCanvasFactory = {
-    create(width, height) {
-      const canvas  = createCanvas(width, height);
-      const context = canvas.getContext("2d");
-      return { canvas, context };
-    },
-    reset(canvasAndContext, width, height) {
-      canvasAndContext.canvas.width  = width;
-      canvasAndContext.canvas.height = height;
-    },
-    destroy(canvasAndContext) {
-      canvasAndContext.canvas.width  = 0;
-      canvasAndContext.canvas.height = 0;
-      canvasAndContext.canvas  = null;
-      canvasAndContext.context = null;
-    },
-  };
-
-  const data   = new Uint8Array(pdfBuffer);
-  const pdfDoc = await pdfjsLib.getDocument({
-    data,
-    canvasFactory: NodeCanvasFactory,
-  }).promise;
-
-  const pages = [];
-
-  for (let i = 1; i <= pdfDoc.numPages; i++) {
-    const page     = await pdfDoc.getPage(i);
-    const viewport = page.getViewport({ scale: 1.5 });
-
-    const canvasAndContext = NodeCanvasFactory.create(viewport.width, viewport.height);
-
-    await page.render({
-      canvasContext: canvasAndContext.context,
-      viewport,
-      canvasFactory: NodeCanvasFactory,
-    }).promise;
-
-    pages.push({
-      pageNum: i,
-      buffer:  canvasAndContext.canvas.toBuffer("image/jpeg", { quality: 0.85 }),
-    });
-
-    NodeCanvasFactory.destroy(canvasAndContext);
-  }
-
-  return pages;
-}
-
-// ── Groq Vision: extract one page ─────────────────────────────────────────────
-async function extractPageWithGroq(imageBuffer, pageNum, retries = 2) {
-  const client      = new Groq({ apiKey: process.env.GROQ_API_KEY });
-  const base64Image = imageBuffer.toString("base64");
+// ── Direct PDF → Groq OCR ─────────────────────────────────────────────────────
+// ✅ No canvas, no pdfjs, no RAM-heavy page rendering
+// Sends the raw PDF as base64 directly to Groq vision model
+// Groq reads all pages in one call — much faster and lighter
+async function extractPdfWithGroq(pdfBuffer, rollNo, retries = 2) {
+  const client     = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  const base64Pdf  = pdfBuffer.toString("base64");
 
   for (let attempt = 1; attempt <= retries + 1; attempt++) {
     try {
       const response = await client.chat.completions.create({
-        model:      "meta-llama/llama-4-scout-17b-16e-instruct",
-        max_tokens: 4096,
+        model:       "meta-llama/llama-4-scout-17b-16e-instruct",
+        max_tokens:  8192,
         temperature: 0.1,
         messages: [
           {
             role: "user",
             content: [
               {
-                type:      "image_url",
-                image_url: { url: `data:image/jpeg;base64,${base64Image}` },
+                type: "text",
+                text: `This is a handwritten student answer sheet for roll number ${rollNo}.
+Transcribe ALL handwritten text exactly as written, page by page.
+Use this format for each page:
+=== Page N ===
+[transcribed text for that page]
+
+Preserve all question numbers, headings, and answer structure.
+If a page or section is blank or unreadable, write "(blank)".
+Output only the transcribed text — no preamble, no explanation.`,
               },
               {
-                type: "text",
-                text: `This is page ${pageNum} of a handwritten student answer sheet.
-Transcribe ALL handwritten text exactly as written.
-Preserve question numbers, headings, and structure.
-If a section is blank or unreadable, write "(blank)".
-Output only the transcribed text — no preamble, no explanation.`,
+                type:      "image_url",
+                image_url: {
+                  url: `data:application/pdf;base64,${base64Pdf}`,
+                },
               },
             ],
           },
@@ -113,20 +61,21 @@ Output only the transcribed text — no preamble, no explanation.`,
       });
 
       const text = response.choices?.[0]?.message?.content?.trim();
-      if (!text || text.length < 3) return "(blank page)";
+      if (!text || text.length < 3) return "(blank)";
       return text;
+
     } catch (err) {
-      console.error(`  OCR page ${pageNum} attempt ${attempt} failed:`, err.message);
+      console.error(`  OCR attempt ${attempt} failed for ${rollNo}:`, err.message);
       if (attempt <= retries) {
-        await new Promise((r) => setTimeout(r, 2000));
+        await new Promise((r) => setTimeout(r, 3000));
       } else {
-        return `(error on page ${pageNum}: ${err.message})`;
+        return `(error: ${err.message})`;
       }
     }
   }
 }
 
-// ── Background OCR — saves to Result collection ───────────────────────────────
+// ── Background OCR — sequential, one script at a time ────────────────────────
 async function runBackgroundOcr({
   fileBuffer,
   scriptKey,
@@ -139,6 +88,7 @@ async function runBackgroundOcr({
   try {
     console.log(`\n🔍 [BG OCR] Starting: ${scriptKey}`);
 
+    // Mark as pending
     await Result.updateOne(
       { scriptKey },
       {
@@ -156,33 +106,41 @@ async function runBackgroundOcr({
       { upsert: true }
     );
 
-    const pages     = await pdfToPageBuffers(fileBuffer);
-    const pageTexts = [];
+    // ✅ Single Groq call for entire PDF — no page-by-page loop needed
+    const extractedText = await extractPdfWithGroq(fileBuffer, rollNo);
 
-    for (const { pageNum, buffer } of pages) {
-      console.log(`  [BG OCR] Page ${pageNum}/${pages.length} — ${rollNo}`);
-      const text = await extractPageWithGroq(buffer, pageNum);
-      pageTexts.push({ page: pageNum, text });
+    // Parse page sections from the response to populate ocrPages array
+    // so student "My Extracted Answers" tab still works page by page
+    const ocrPages = [];
+    const pageRegex = /===\s*Page\s*(\d+)\s*===\s*([\s\S]*?)(?====\s*Page\s*\d+\s*===|$)/gi;
+    let match;
+    while ((match = pageRegex.exec(extractedText)) !== null) {
+      ocrPages.push({
+        page: parseInt(match[1], 10),
+        text: match[2].trim() || "(blank)",
+      });
     }
 
-    const fullText = pageTexts
-      .map((p) => `=== Page ${p.page} ===\n${p.text}`)
-      .join("\n\n");
+    // If Groq didn't use page markers, store whole text as page 1
+    if (ocrPages.length === 0) {
+      ocrPages.push({ page: 1, text: extractedText });
+    }
 
     await Result.updateOne(
       { scriptKey },
       {
         $set: {
-          extractedText: fullText,
-          ocrPages:      pageTexts,
-          ocrStatus:     "done",
-          ocrDoneAt:     new Date(),
-          updatedAt:     new Date(),
+          extractedText,
+          ocrPages,
+          ocrStatus: "done",
+          ocrDoneAt: new Date(),
+          updatedAt: new Date(),
         },
       }
     );
 
-    console.log(`✅ [BG OCR] Done: ${rollNo} — ${pageTexts.length} pages`);
+    console.log(`✅ [BG OCR] Done: ${rollNo} — ${ocrPages.length} page(s) extracted`);
+
   } catch (err) {
     console.error(`❌ [BG OCR] Failed for ${scriptKey}:`, err.message);
     await Result.updateOne(
@@ -198,9 +156,60 @@ async function runBackgroundOcr({
   }
 }
 
+// ── Resume pending OCR jobs (called from server.js on startup) ────────────────
+// Handles cases where server was restarted mid-OCR
+export async function resumePendingOcr() {
+  try {
+    const pending = await Result.find({
+      ocrStatus: { $in: ["pending", "failed"] },
+    }).lean();
+
+    if (!pending.length) {
+      console.log("✅ [RESUME OCR] No pending jobs.");
+      return;
+    }
+
+    console.log(`🔄 [RESUME OCR] Found ${pending.length} pending/failed job(s) — resuming...`);
+
+    // Run sequentially in background
+    ;(async () => {
+      for (const record of pending) {
+        try {
+          // Re-download PDF from S3
+          const s3Res = await s3.send(
+            new GetObjectCommand({
+              Bucket: process.env.S3_BUCKET,
+              Key:    record.scriptKey,
+            })
+          );
+          const chunks = [];
+          for await (const chunk of s3Res.Body) chunks.push(Buffer.from(chunk));
+          const fileBuffer = Buffer.concat(chunks);
+
+          await runBackgroundOcr({
+            fileBuffer,
+            scriptKey: record.scriptKey,
+            rollNo:    record.rollNo,
+            classId:   record.classId,
+            course:    record.course,
+            examType:  record.examType,
+            examId:    record.examId,
+          });
+        } catch (err) {
+          console.error(`❌ [RESUME OCR] Failed for ${record.scriptKey}:`, err.message);
+        }
+        // Cooldown between scripts
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+      console.log("✅ [RESUME OCR] All pending jobs processed.");
+    })();
+
+  } catch (err) {
+    console.error("❌ [RESUME OCR] Error:", err.message);
+  }
+}
+
 // ── POST /api/uploadscript/answer-scripts ─────────────────────────────────────
-// ✅ Uploads all files to S3 in PARALLEL (not sequentially) to avoid timeout
-// ✅ Responds as soon as S3 uploads finish — OCR runs in background
 router.post(
   "/answer-scripts",
   upload.array("answer_scripts", 50),
@@ -218,7 +227,7 @@ router.post(
         return res.status(400).json({ error: "No files uploaded." });
       }
 
-      // ✅ Validate all files are PDFs before starting any uploads
+      // Validate all files are PDFs before uploading anything
       for (const file of req.files) {
         const originalName = path.basename(file.originalname || "");
         const isPdf =
@@ -235,7 +244,7 @@ router.post(
       const uploadedFiles = [];
       const ocrQueue      = [];
 
-      // ✅ Upload ALL files to S3 in parallel — cuts upload time from n×t to 1×t
+      // ✅ Upload ALL files to S3 in parallel — fast, no timeout risk
       await Promise.all(
         req.files.map(async (file) => {
           const originalName = path.basename(file.originalname || "");
@@ -250,11 +259,9 @@ router.post(
             })
           );
 
-          console.log(`✅ Uploaded to S3: ${key}`);
+          console.log(`✅ S3 uploaded: ${key}`);
 
           const rollNo = path.parse(originalName).name;
-
-          // Push to arrays (thread-safe — JS is single-threaded)
           uploadedFiles.push(key);
           ocrQueue.push({
             fileBuffer: file.buffer,
@@ -268,20 +275,26 @@ router.post(
         })
       );
 
-      // ✅ Respond immediately after S3 uploads — don't wait for OCR
+      // ✅ Respond immediately — OCR runs in background
       res.json({
-        message:       "Scripts uploaded successfully ✅",
+        message:      "Scripts uploaded successfully ✅",
         uploadedFiles,
-        uploaded:      uploadedFiles,
+        uploaded:     uploadedFiles,
       });
 
-      // ✅ Fire OCR jobs in background after response is sent
-      // Each runs independently — a failure in one won't affect others
-      for (const item of ocrQueue) {
-        runBackgroundOcr(item).catch((err) =>
-          console.error(`[BG OCR] Unhandled error for ${item.scriptKey}:`, err.message)
-        );
-      }
+      // ✅ Run OCR jobs SEQUENTIALLY — one at a time to prevent RAM spike
+      ;(async () => {
+        for (const item of ocrQueue) {
+          try {
+            await runBackgroundOcr(item);
+          } catch (err) {
+            console.error(`[BG OCR] Unhandled error for ${item.scriptKey}:`, err.message);
+          }
+          // 3s cooldown between scripts for GC
+          await new Promise((r) => setTimeout(r, 3000));
+        }
+        console.log(`✅ [BG OCR] All ${ocrQueue.length} script(s) processed`);
+      })();
 
     } catch (err) {
       console.error("Answer scripts upload error:", err.stack || err);
