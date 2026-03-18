@@ -41,6 +41,7 @@ const UploadScripts = () => {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const [dragOver,     setDragOver]     = useState(false);
+  const [evalSuccess,  setEvalSuccess]  = useState(false);
 
   const fileInputRef   = useRef(null);
   const folderInputRef = useRef(null);
@@ -155,16 +156,8 @@ const UploadScripts = () => {
       const evalData = await evalRes.json();
       console.log("✅ Evaluation complete:", evalData);
 
-      // ── Step 3: Navigate to buffer/results ────────────────────────────────
-      navigate("/evaluation-buffer", {
-        state: {
-          exam,
-          course:       exam.course,
-          classId:      exam.classId,
-          examType:     exam.examType,
-          uploadedKeys,
-        },
-      });
+      // ── Step 3: Show success screen (no redirect) ─────────────────────────
+      setEvalSuccess(true);
 
     } catch (err) {
       console.error(err);
@@ -202,107 +195,139 @@ const UploadScripts = () => {
 
       {/* Main */}
       <main className="main">
-        <button className="us-back-btn" onClick={() => navigate("/evaluation")}>
-          ← Back to Evaluation
-        </button>
-        <h1 className="page-title">Upload <span>Answer Scripts</span></h1>
 
-        {exam && (
-          <div className="us-exam-banner">
-            <span className="us-banner-icon">📋</span>
-            <div className="us-banner-info">
-              <span className="us-banner-course">{exam.course}</span>
-              <span className="us-banner-meta">
-                {exam.classId} · {exam.examType} · <code>{exam._id}</code>
-              </span>
+        {/* ── Success Screen ── */}
+        {evalSuccess ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "70vh", gap: "16px", textAlign: "center" }}>
+            <div style={{ fontSize: "64px" }}>✅</div>
+            <h2 style={{ fontSize: "24px", fontWeight: "700" }}>Evaluation Complete!</h2>
+            <p style={{ color: "#888", maxWidth: "400px" }}>
+              All answer scripts have been uploaded and evaluated successfully.
+            </p>
+            <div style={{ display: "flex", gap: "12px", marginTop: "8px" }}>
+              <button
+                className="com-btn primary-btn"
+                onClick={() => navigate("/view-mark")}
+              >
+                📊 View Results
+              </button>
+              <button
+                className="com-btn"
+                onClick={() => navigate("/evaluation")}
+              >
+                ← Back to Evaluation
+              </button>
             </div>
-            <span className="us-banner-tag">Answer Scripts Only</span>
           </div>
-        )}
 
-        {/* Drop zone */}
-        <div
-          className={`us-dropzone ${dragOver ? "drag-over" : ""}`}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-        >
-          {/* Hidden: individual PDF picker */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,application/pdf"
-            multiple
-            style={{ display: "none" }}
-            onChange={handleFileInput}
-          />
+        ) : (
 
-          {/* Hidden: folder picker */}
-          <input
-            ref={folderInputRef}
-            type="file"
-            webkitdirectory="true"
-            directory=""
-            multiple
-            style={{ display: "none" }}
-            onChange={handleFileInput}
-          />
-
-          <span className="us-drop-icon">📄</span>
-          <p className="us-drop-title">Drop answer scripts or folders here</p>
-          <p className="us-drop-sub">or use the buttons below · PDF and images accepted</p>
-
-          <div style={{ display: "flex", gap: "12px", marginTop: "12px", justifyContent: "center" }}>
-            <button
-              type="button"
-              className="com-btn primary-btn"
-              onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-            >
-              📄 Select PDFs
+          /* ── Upload Screen ── */
+          <div>
+            <button className="us-back-btn" onClick={() => navigate("/evaluation")}>
+              ← Back to Evaluation
             </button>
-            <button
-              type="button"
-              className="com-btn"
-              onClick={(e) => { e.stopPropagation(); folderInputRef.current?.click(); }}
-            >
-              📁 Select Folder
-            </button>
-          </div>
-        </div>
+            <h1 className="page-title">Upload <span>Answer Scripts</span></h1>
 
-        {/* File list */}
-        {files.length > 0 && (
-          <div className="us-file-list">
-            {files.map((f) => {
-              const name = f.webkitRelativePath || f.name;
-              return (
-                <div key={name} className="us-file-row">
-                  <span className="us-file-icon">📄</span>
-                  <span className="us-file-name">{name}</span>
-                  <span className="us-file-size">{formatSize(f.size)}</span>
-                  <button
-                    className="us-file-remove"
-                    onClick={() => removeFile(f)}
-                    title="Remove"
-                  >✕</button>
+            {exam && (
+              <div className="us-exam-banner">
+                <span className="us-banner-icon">📋</span>
+                <div className="us-banner-info">
+                  <span className="us-banner-course">{exam.course}</span>
+                  <span className="us-banner-meta">
+                    {exam.classId} · {exam.examType} · <code>{exam._id}</code>
+                  </span>
                 </div>
-              );
-            })}
+                <span className="us-banner-tag">Answer Scripts Only</span>
+              </div>
+            )}
+
+            {/* Drop zone */}
+            <div
+              className={`us-dropzone ${dragOver ? "drag-over" : ""}`}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+            >
+              {/* Hidden: individual PDF picker */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,application/pdf"
+                multiple
+                style={{ display: "none" }}
+                onChange={handleFileInput}
+              />
+
+              {/* Hidden: folder picker */}
+              <input
+                ref={folderInputRef}
+                type="file"
+                webkitdirectory="true"
+                directory=""
+                multiple
+                style={{ display: "none" }}
+                onChange={handleFileInput}
+              />
+
+              <span className="us-drop-icon">📄</span>
+              <p className="us-drop-title">Drop answer scripts or folders here</p>
+              <p className="us-drop-sub">or use the buttons below · PDF and images accepted</p>
+
+              <div style={{ display: "flex", gap: "12px", marginTop: "12px", justifyContent: "center" }}>
+                <button
+                  type="button"
+                  className="com-btn primary-btn"
+                  onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                >
+                  📄 Select PDFs
+                </button>
+                <button
+                  type="button"
+                  className="com-btn"
+                  onClick={(e) => { e.stopPropagation(); folderInputRef.current?.click(); }}
+                >
+                  📁 Select Folder
+                </button>
+              </div>
+            </div>
+
+            {/* File list */}
+            {files.length > 0 && (
+              <div className="us-file-list">
+                {files.map((f) => {
+                  const name = f.webkitRelativePath || f.name;
+                  return (
+                    <div key={name} className="us-file-row">
+                      <span className="us-file-icon">📄</span>
+                      <span className="us-file-name">{name}</span>
+                      <span className="us-file-size">{formatSize(f.size)}</span>
+                      <button
+                        className="us-file-remove"
+                        onClick={() => removeFile(f)}
+                        title="Remove"
+                      >✕</button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Submit */}
+            <div className="ev-proceed-row" style={{ marginTop: "24px" }}>
+              <button
+                className="com-btn primary-btn ev-proceed-btn"
+                onClick={handleSubmit}
+                disabled={files.length === 0 || uploading}
+              >
+                {uploading
+                  ? "Processing…"
+                  : `Submit ${files.length > 0 ? `(${files.length})` : ""} Scripts →`}
+              </button>
+            </div>
           </div>
         )}
 
-        {/* Submit */}
-        <div className="ev-proceed-row" style={{ marginTop: "24px" }}>
-          <button
-            className="com-btn primary-btn ev-proceed-btn"
-            onClick={handleSubmit}
-            disabled={files.length === 0 || uploading}
-          >
-            {uploading
-              ? "Processing…"
-              : `Submit ${files.length > 0 ? `(${files.length})` : ""} Scripts →`}
-          </button>
-        </div>
       </main>
     </div>
   );
