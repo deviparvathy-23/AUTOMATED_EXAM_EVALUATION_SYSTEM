@@ -4,11 +4,11 @@ import "../admin/AdminDashboard.css";
 
 const NAV_ITEMS = [
   { label: "Dashboard", icon: "⊞", path: "/teacher" },
-  { label: "Evaluation", icon: "📋", path: "/evaluation", active: true },
+  { label: "Evaluation", icon: "📋", path: "/evaluation", active: true},
   { label: "View Results", icon: "📊", path: "/view-mark" },
   { label: "Reference Answer", icon: "📖", path: "/reference-answer" },
   { label: "Revaluation", icon: "🔄", path: "/revaluation" },
-  { label: "My Classes", icon: "🏫", path: "/courseclass" },
+  { label: "My Classes",icon:"🏫",path:"/courseclass"},
 ];
 
 const EXAM_TYPES = [
