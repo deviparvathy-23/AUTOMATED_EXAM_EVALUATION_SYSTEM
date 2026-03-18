@@ -146,36 +146,39 @@ const parseResultTableForDisplay = (resultTable) => {
     row.split("|").map((c) => c.trim()).filter(Boolean);
 
   const headerCells = splitRow(rows[0]);
-  // rows[1] is the separator line (---|---|...), skip it
+  // rows[1] is the separator line, skip it
   const dataCells = splitRow(rows[2]);
 
-  // headerCells: ["Roll No", "Q1", "Max Marks", "Marks Awarded", "Justification", "Q2", ...]
-  // dataCells:   ["42",      "3",  "2",          "Correct...",    "3",  "3", ...]
+  // Header pattern: Roll No | Q1 | Max Marks | Marks Awarded | Justification | Q2 | ...| Total Marks
+  // Data pattern:   40      | 3  | 2         | Correct...    | 3             | 3  | ...| 41.5
+  // Each question block in header = 4 columns: Qn, Max Marks, Marks Awarded, Justification
+  // Data columns align 1-to-1 with header columns
 
   const questions = [];
 
-  // Find all Q column positions in header
   headerCells.forEach((label, i) => {
-    if (!label.toLowerCase().startsWith("q")) return;
-    if (label.toLowerCase().includes("total")) return;
+    const lower = label.toLowerCase();
+    // Match Qn headers (Q1, Q2, Q10...) but not "Total Marks"
+    if (!lower.startsWith("q") || lower.includes("total")) return;
 
-    // Q is at index i in header
-    // Corresponding data: dataCells[i] = max, dataCells[i+1] = marks, dataCells[i+2] = justification
-    const max          = Number(dataCells[i])     || 0;
-    const marksAwarded = Number(dataCells[i + 1]) || 0;
-    const reason       = dataCells[i + 2]         || "";
+    // dataCells[i] = max marks for this question
+    // dataCells[i+1] = marks awarded
+    // dataCells[i+2] = justification
+    const max          = parseFloat(dataCells[i])     || 0;
+    const marksAwarded = parseFloat(dataCells[i + 1]) || 0;
+    const reason       = dataCells[i + 2]             || "";
 
     questions.push({
       question:        label,
       max:             isNaN(max) ? 0 : max,
       marks:           isNaN(marksAwarded) ? 0 : marksAwarded,
-      deductionReason: reason || (marksAwarded === 0 ? "Not attempted" : ""),
+      deductionReason: reason,
       excluded:        /not counted in total/i.test(reason),
     });
   });
 
   // Total is always the last data cell
-  const storedTotal = Number(dataCells[dataCells.length - 1]);
+  const storedTotal = parseFloat(dataCells[dataCells.length - 1]);
 
   return {
     questions,
@@ -219,34 +222,40 @@ router.get("/results", authTeacher, async (req, res) => {
     }).lean();
 
     const filteredRows = rows
-      .filter(
-        (row) =>
-          normalize(row.course) === reqCourse &&
-          normalize(row.classId) === reqClass
-      )
-      .map((row) => {
-        const parsed = parseResultTableForDisplay(row.resultTable);
-   const questions = parsed.questions;
-   
-   // Use stored total if available, otherwise sum marks awarded
-   const total = parsed.storedTotal !== null
-     ? parsed.storedTotal
-     : questions.reduce((sum, q) => sum + Number(q.marks || 0), 0);
-   
-   // Max = sum of ALL questions including unattempted ones
-   const maxTotal = questions.reduce((sum, q) => sum + Number(q.max || 0), 0);
-   
-   const pct = maxTotal > 0 ? Math.round((Number(total) / maxTotal) * 100) : 0;
-   
-           return {
-             ...row,
-             questions: parsed.questions,
-             storedTotal: parsed.storedTotal,
-             total,
-             maxTotal,
-             pct,
-           };
-         });
+  .filter(
+    (row) =>
+      normalize(row.course) === reqCourse &&
+      normalize(row.classId) === reqClass
+  )
+  .map((row) => {
+    const parsed = parseResultTableForDisplay(row.resultTable);
+    const questions = parsed.questions;
+
+    // Use the stored total from resultTable (e.g. 41.5), NOT row.totalMarks which is 0
+    const total = parsed.storedTotal !== null
+      ? parsed.storedTotal
+      : questions
+          .filter((q) => !q.excluded)
+          .reduce((sum, q) => sum + parseFloat(q.marks || 0), 0);
+
+    // Max = sum of ALL question max marks (what the student could have scored)
+    const maxTotal = questions.reduce(
+      (sum, q) => sum + parseFloat(q.max || 0), 0
+    );
+
+    const pct = maxTotal > 0
+      ? Math.round((parseFloat(total) / maxTotal) * 100)
+      : 0;
+
+    return {
+      ...row,
+      questions,
+      storedTotal: parsed.storedTotal,
+      total,
+      maxTotal,
+      pct,
+    };
+  });
 
     filteredRows.sort((a, b) =>
       String(a.rollNo || "").localeCompare(String(b.rollNo || ""), undefined, {
