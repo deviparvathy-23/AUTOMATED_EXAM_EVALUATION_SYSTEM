@@ -266,14 +266,7 @@ onClick={handleMapCourse}
 
 🔗 Map Course </button>
 
-<button
-className="com-btn"
-style={{ marginTop: "10px" }}
-onClick={fetchMappings}
-
->
-
-👁 View Mappings </button>
+<button className="com-btn view-btn" onClick={fetchMappings}>👁 View Mappings</button>
 
 {success && (
 
