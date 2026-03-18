@@ -12,16 +12,16 @@ const router = express.Router();
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
-    accessKeyId:     process.env.AWS_ACCESS_KEY_ID,
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
 });
 
 const storage = multer.memoryStorage();
-const upload  = multer({ storage });
+const upload = multer({ storage });
 
 // ── PDF → JPEG page buffers ──────────────────────────────────────────────────
-const require  = createRequire(import.meta.url);
+const require = createRequire(import.meta.url);
 const pdfjsLib = (() => {
   const p = require("pdfjs-dist/legacy/build/pdf.js");
   return p.default ?? p;
@@ -30,17 +30,22 @@ const { createCanvas } = require("canvas");
 pdfjsLib.GlobalWorkerOptions.workerSrc = false;
 
 async function pdfToPageBuffers(pdfBuffer) {
-  const data   = new Uint8Array(pdfBuffer);
+  const data = new Uint8Array(pdfBuffer);
   const pdfDoc = await pdfjsLib.getDocument({ data }).promise;
-  const pages  = [];
+  const pages = [];
 
   for (let i = 1; i <= pdfDoc.numPages; i++) {
-    const page     = await pdfDoc.getPage(i);
+    const page = await pdfDoc.getPage(i);
     const viewport = page.getViewport({ scale: 1.5 });
-    const canvas   = createCanvas(viewport.width, viewport.height);
-    const ctx      = canvas.getContext("2d");
+    const canvas = createCanvas(viewport.width, viewport.height);
+    const ctx = canvas.getContext("2d");
+
     await page.render({ canvasContext: ctx, viewport }).promise;
-    pages.push({ pageNum: i, buffer: canvas.toBuffer("image/jpeg", { quality: 0.85 }) });
+
+    pages.push({
+      pageNum: i,
+      buffer: canvas.toBuffer("image/jpeg", { quality: 0.85 }),
+    });
   }
 
   return pages;
@@ -48,21 +53,21 @@ async function pdfToPageBuffers(pdfBuffer) {
 
 // ── Groq Vision: extract one page ───────────────────────────────────────────
 async function extractPageWithGroq(imageBuffer, pageNum, retries = 2) {
-  const client      = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
   const base64Image = imageBuffer.toString("base64");
 
   for (let attempt = 1; attempt <= retries + 1; attempt++) {
     try {
       const response = await client.chat.completions.create({
-        model:       "meta-llama/llama-4-scout-17b-16e-instruct",
-        max_tokens:  4096,
+        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        max_tokens: 4096,
         temperature: 0.1,
         messages: [
           {
             role: "user",
             content: [
               {
-                type:      "image_url",
+                type: "image_url",
                 image_url: { url: `data:image/jpeg;base64,${base64Image}` },
               },
               {
@@ -81,17 +86,27 @@ Output only the transcribed text — no preamble, no explanation.`,
       const text = response.choices?.[0]?.message?.content?.trim();
       if (!text || text.length < 3) return "(blank page)";
       return text;
-
     } catch (err) {
       console.error(`  OCR page ${pageNum} attempt ${attempt} failed:`, err.message);
-      if (attempt <= retries) await new Promise(r => setTimeout(r, 2000));
-      else return `(error on page ${pageNum}: ${err.message})`;
+      if (attempt <= retries) {
+        await new Promise((r) => setTimeout(r, 2000));
+      } else {
+        return `(error on page ${pageNum}: ${err.message})`;
+      }
     }
   }
 }
 
 // ── Background OCR — saves to Result collection ──────────────────────────────
-async function runBackgroundOcr({ fileBuffer, scriptKey, rollNo, classId, course, examType, examId }) {
+async function runBackgroundOcr({
+  fileBuffer,
+  scriptKey,
+  rollNo,
+  classId,
+  course,
+  examType,
+  examId,
+}) {
   try {
     console.log(`\n🔍 [BG OCR] Starting: ${scriptKey}`);
 
@@ -99,15 +114,20 @@ async function runBackgroundOcr({ fileBuffer, scriptKey, rollNo, classId, course
       { scriptKey },
       {
         $set: {
-          rollNo, scriptKey, classId, course, examType, examId,
-          ocrStatus:     "pending",
+          rollNo,
+          scriptKey,
+          classId,
+          course,
+          examType,
+          examId,
+          ocrStatus: "pending",
           extractedText: "",
         },
       },
       { upsert: true }
     );
 
-    const pages     = await pdfToPageBuffers(fileBuffer);
+    const pages = await pdfToPageBuffers(fileBuffer);
     const pageTexts = [];
 
     for (const { pageNum, buffer } of pages) {
@@ -117,7 +137,7 @@ async function runBackgroundOcr({ fileBuffer, scriptKey, rollNo, classId, course
     }
 
     const fullText = pageTexts
-      .map(p => `=== Page ${p.page} ===\n${p.text}`)
+      .map((p) => `=== Page ${p.page} ===\n${p.text}`)
       .join("\n\n");
 
     await Result.updateOne(
@@ -125,21 +145,26 @@ async function runBackgroundOcr({ fileBuffer, scriptKey, rollNo, classId, course
       {
         $set: {
           extractedText: fullText,
-          ocrPages:      pageTexts,
-          ocrStatus:     "done",
-          ocrDoneAt:     new Date(),
-          updatedAt:     new Date(),
+          ocrPages: pageTexts,
+          ocrStatus: "done",
+          ocrDoneAt: new Date(),
+          updatedAt: new Date(),
         },
       }
     );
 
     console.log(`✅ [BG OCR] Done: ${rollNo} — ${pageTexts.length} pages`);
-
   } catch (err) {
     console.error(`❌ [BG OCR] Failed for ${scriptKey}:`, err.message);
     await Result.updateOne(
       { scriptKey },
-      { $set: { ocrStatus: "failed", ocrError: err.message, updatedAt: new Date() } }
+      {
+        $set: {
+          ocrStatus: "failed",
+          ocrError: err.message,
+          updatedAt: new Date(),
+        },
+      }
     ).catch(() => {});
   }
 }
@@ -167,30 +192,37 @@ router.post(
       }
 
       const uploadedFiles = [];
-      const ocrQueue      = [];
+      const ocrQueue = [];
 
       for (const file of req.files) {
-        if (file.mimetype !== "application/pdf") {
+        const originalName = path.basename(file.originalname || "");
+        const isPdf =
+          file.mimetype === "application/pdf" ||
+          originalName.toLowerCase().endsWith(".pdf");
+
+        if (!isPdf) {
           return res.status(400).json({
-            error: `Only PDF files are allowed: ${file.originalname}`,
+            error: `Only PDF files are allowed: ${originalName}`,
           });
         }
 
-        const key = `${course}/${classId}/${examType}/answer-scripts/${file.originalname}`;
+        const key = `${course}/${classId}/${examType}/answer-scripts/${originalName}`;
 
-        await s3.send(new PutObjectCommand({
-          Bucket:      process.env.S3_BUCKET,
-          Key:         key,
-          Body:        file.buffer,
-          ContentType: file.mimetype,
-        }));
+        await s3.send(
+          new PutObjectCommand({
+            Bucket: process.env.S3_BUCKET,
+            Key: key,
+            Body: file.buffer,
+            ContentType: "application/pdf",
+          })
+        );
 
         uploadedFiles.push(key);
 
-        const rollNo = path.parse(file.originalname).name;
+        const rollNo = path.parse(originalName).name;
         ocrQueue.push({
           fileBuffer: file.buffer,
-          scriptKey:  key,
+          scriptKey: key,
           rollNo,
           classId,
           course,
@@ -199,20 +231,17 @@ router.post(
         });
       }
 
-      // ✅ respond immediately — frontend gets keys and triggers evaluation
       res.json({
-        message:      "Scripts uploaded successfully ✅",
+        message: "Scripts uploaded successfully ✅",
         uploadedFiles,
-        uploaded:     uploadedFiles,
+        uploaded: uploadedFiles,
       });
 
-      // ✅ OCR runs in background after response
       for (const item of ocrQueue) {
-        runBackgroundOcr(item).catch(err =>
+        runBackgroundOcr(item).catch((err) =>
           console.error(`[BG OCR] Unhandled error for ${item.scriptKey}:`, err.message)
         );
       }
-
     } catch (err) {
       console.error("Answer scripts upload error:", err.stack || err);
       return res.status(500).json({
