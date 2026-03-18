@@ -161,21 +161,21 @@ async function generateReferenceAnswers(ai, course, classId, examType, qpKey, qp
 
   const stream = await ai.models.generateContentStream({
     model: MODEL,
-    config: { temperature: 0.1, topP: 0.9, topK: 10, maxOutputTokens: 16384 },
+    config: { temperature: 0.1, topP: 0.9, topK: 10, maxOutputTokens: 32768 },
     contents,
   });
 
-  let finalText = "";
+  let  = "";
   for await (const chunk of stream) {
     const text =
       chunk?.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
-    finalText += text;
+     += text;
   }
 
-  if (!finalText) throw new Error("Empty reference answer result from Gemini");
+  if (!) throw new Error("Empty reference answer result from Gemini");
 
   const s3Key = `${course}/${classId}/${examType}/reference-answers/reference.pdf`;
-  const pdfBuffer = await textToPDFBuffer(finalText);
+  const pdfBuffer = await textToPDFBuffer();
   await uploadToS3(BUCKET, s3Key, pdfBuffer, "application/pdf");
 
   const refAnswer = await ReferenceAnswer.findOneAndUpdate(
@@ -217,11 +217,12 @@ EVALUATION INSTRUCTIONS:
 OUTPUT FORMAT — output ONLY this exact markdown table, nothing else:
 | Roll No | Q1 | Max Marks | Marks Awarded | Justification | Q2 | Max Marks | Marks Awarded | Justification | ... (repeat for ALL questions) | Total Marks |
 
-CRITICAL:
-- Every question from the paper MUST appear as a column group.
-- Do not stop before all questions are covered.
-- Do not write anything before or after the table.
-- Total Marks = sum of all Marks Awarded.
+CRITICAL OUTPUT RULES:
+- Output the table in ONE single response. Do not stop mid-row.
+- Every row must be complete from Roll No to Total Marks.
+- Do not add any text before or after the table.
+- Do not say "Here is the evaluation" or any preamble.
+- Start your response directly with | Roll No |
 `.trim();
 /**
  * POST /api/evaluation/run
@@ -354,15 +355,17 @@ router.post("/run", async (req, res) => {
           contents,
         });
 
-        let finalText = "";
+        let  = "";
         for await (const chunk of stream) {
           const text =
             chunk?.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
           finalText += text;
         }
 
-        const resultTable = finalText.trim();
-        if (!resultTable) throw new Error("Empty result from Gemini");
+        const tableStart = finalText.indexOf("| Roll No");
+    if (tableStart === -1) throw new Error("Gemini did not return a valid table");
+    const resultTable = finalText.slice(tableStart).trim();
+    if (!resultTable) throw new Error("Empty result from Gemini");;
 
         const totalMarks = extractTotal(resultTable);
 
