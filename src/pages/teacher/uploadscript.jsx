@@ -222,7 +222,7 @@ const UploadScripts = () => {
                 📊 View Results
               </button>
               <button
-                className="com-btn"
+                className="com-btn view-btn"
                 onClick={() => navigate("/evaluation")}
               >
                 ← Back to Evaluation
