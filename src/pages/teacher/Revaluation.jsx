@@ -15,7 +15,6 @@ const Revaluation = () => {
 
   const NAV_ITEMS = [
     { label: "Dashboard",        icon: "⊞", path: "/teacher" },
-    { label: "My Classes",       icon: "🏫", path: "/teacher/classes" },
     { label: "Evaluation",       icon: "📋", path: "/evaluation" },
     { label: "View Results",     icon: "📊", path: "/view-mark" },
     { label: "Reference Answer", icon: "📖", path: "/reference-answer" },
