@@ -92,7 +92,7 @@ const UploadMaterials = () => {
       return;
     }
 
-    setIsEvaluating(true);
+    // setIsEvaluating(true);
 
     try {
       const formData = new FormData();
@@ -144,49 +144,49 @@ const UploadMaterials = () => {
       }
 
       console.log("Upload success:", uploadData);
-      const uploadedKeys = uploadData.uploaded;
+      // const uploadedKeys = uploadData.uploaded;
 
-      const evalRes = await fetch(`${API_BASE}/api/evaluation/run`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            classId: exam.classId,
-            course: exam.course,
-            examType: exam.examType,
-            evalType: exam.evalType,
-            uploadedKeys, // 🔥 THIS is the fix
-          }),
-      });
+      // const evalRes = await fetch(`${API_BASE}/api/evaluation/run`, {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({
+      //       classId: exam.classId,
+      //       course: exam.course,
+      //       examType: exam.examType,
+      //       evalType: exam.evalType,
+      //       uploadedKeys, // 🔥 THIS is the fix
+      //     }),
+      // });
 
-      const evalText = await evalRes.text();
-      console.log("Evaluation raw response:", evalText);
+      // const evalText = await evalRes.text();
+      // console.log("Evaluation raw response:", evalText);
 
-      let evalData;
-      try {
-        evalData = JSON.parse(evalText);
-      } catch {
-        throw new Error("Evaluation API returned invalid JSON");
-      }
+      // let evalData;
+      // try {
+      //   evalData = JSON.parse(evalText);
+      // } catch {
+      //   throw new Error("Evaluation API returned invalid JSON");
+      // }
 
-      if (!evalRes.ok) {
-        throw new Error(evalData.error || evalData.message || "Evaluation failed");
-      }
+      // if (!evalRes.ok) {
+      //   throw new Error(evalData.error || evalData.message || "Evaluation failed");
+      // }
 
-      console.log("Evaluation success:", evalData);
+      // console.log("Evaluation success:", evalData);
       alert("Uploaded successfully ✅");
 
-      navigate("/view-mark", { state: { exam } });
+      // navigate("/view-mark", { state: { exam } });
     } catch (err) {
       console.error(err);
       alert(err.message || "Something went wrong");
     } finally {
-      setIsEvaluating(false);
+      // setIsEvaluating(false);
     }
   };
 
   return (
     <div className="container">
-      {isEvaluating && <EvaluatingModal />}
+      /* {isEvaluating && <EvaluatingModal />} */
 
       <aside className="sidebar">
         <h2 className="logo">SAGE</h2>
@@ -215,9 +215,14 @@ const UploadMaterials = () => {
       </aside>
 
       <main className="main">
-        <button className="us-back-btn" onClick={() => navigate("/evaluation")}>
-          ← Back to Evaluation
-        </button>
+        <div className="logout-container">
+            <button
+            className="com-btn logout-btn-top"
+            onClick={() => navigate("/evaluation")}
+            >
+              ↩ Back
+            </button>
+        </div>
 
         <h1 className="page-title">
           {exam ? (
