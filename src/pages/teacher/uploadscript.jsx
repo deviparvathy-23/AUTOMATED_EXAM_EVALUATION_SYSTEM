@@ -283,14 +283,13 @@ const UploadScripts = () => {
 
               <div style={{ display: "flex", gap: "12px", marginTop: "12px", justifyContent: "center" }}>
                 <button
-                  type="button"
                   className="com-btn primary-btn"
                   onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
                 >
                   📄 Select PDFs
                 </button>
                 <button
-                  className="com-btn view-btn"
+                  className="com-btn primary-btn"
                   onClick={(e) => { e.stopPropagation(); folderInputRef.current?.click(); }}
                 >
                   📁 Select Folder
