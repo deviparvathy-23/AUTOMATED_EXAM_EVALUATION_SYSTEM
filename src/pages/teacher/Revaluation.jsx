@@ -100,27 +100,24 @@ const Revaluation = () => {
 
         <ul className="sidebar-cards">
           {NAV_ITEMS.map(({ label, icon, path, active, badge }) => (
-            <li
-              key={label}
-              className={active ? "active" : ""}
-              onClick={() => navigate(path)}
-            >
-              <span>
-                <span className="nav-icon">{icon}</span>
+          <li
+          key={label}
+          className={active ? "active" : ""}
+          onClick={() => navigate(path)}
+          >
+            <span>
+              <span className="nav-icon">{icon}</span>
                 {label}
               </span>
-
               {badge > 0 && (
-                <span
-                  style={{
-                    background: "#ff4d4f",
-                    color: "white",
-                    borderRadius: "12px",
-                    padding: "2px 8px",
-                    fontSize: "12px",
-                    fontWeight: "bold",
-                  }}
-                >
+                <span style={{
+                  background: "#ff4d4f",
+                  color: "white",
+                  borderRadius: "12px",
+                  padding: "2px 8px",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                }}>
                   {badge}
                 </span>
               )}
