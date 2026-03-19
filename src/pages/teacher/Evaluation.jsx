@@ -447,8 +447,7 @@ const Evaluation = () => {
                             Cancel
                           </button>
                           <button
-                            className="com-btn"
-                            style={{ background: "#ef4444", color: "#fff" }}
+                            className="tm-btn tm-delete-btn"
                             onClick={() => handleDeleteExam(exam)}
                           >
                             Delete
