@@ -441,7 +441,8 @@ const Evaluation = () => {
                           }}
                         >
                           <button
-                            className="com-btn view-btn"
+                            className="com-btn"
+                            style={{ background: "#ef4444", color: "#fff" }}
                             onClick={() => setDeleteActiveCard(null)}
                           >
                             Cancel
