@@ -182,7 +182,7 @@ const TeacherClasses = () => {
       <aside className="sidebar">
         <h2 className="logo">SAGE</h2>
         <div className="user-info">
-          <div className="avatar">T</div>
+          <div className="avatar">{teacher?.name?.charAt(0)}</div>
           <div className="user-details">
             <h4>{teacher?.name || "Teacher"}</h4>
             <p>Teacher</p>
