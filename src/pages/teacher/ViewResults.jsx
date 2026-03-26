@@ -6,12 +6,12 @@ import "../admin/AdminDashboard.css";
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const NAV_ITEMS = [
-  { label: "Dashboard",        icon: "⊞", path: "/teacher" },
-  { label: "My Classes",       icon: "🏫", path: "/teacher/classes" },
-  { label: "Evaluation",       icon: "📋", path: "/evaluation" },
-  { label: "View Results",     icon: "📊", path: "/view-mark", active: true },
+  { label: "Dashboard", icon: "⊞", path: "/teacher" },
+  { label: "Evaluation", icon: "📋", path: "/evaluation" },
+  { label: "View Results", icon: "📊", path: "/view-mark" , active: true},
   { label: "Reference Answer", icon: "📖", path: "/reference-answer" },
-  { label: "Revaluation",      icon: "🔄", path: "/revaluation" },
+  { label: "Revaluation", icon: "🔄", path: "/revaluation" },
+  { label: "My Classes",icon:"🏫",path:"/courseclass"},
 ];
 
 // ── Same parser used in student ViewResult ────────────────────────────────────
@@ -144,7 +144,7 @@ const ViewResult = () => {
       <main className="main">
         <div className="logout-container">
           <button className="com-btn logout-btn-top" onClick={() => navigate("/login")}>
-            ↩ Logout
+            ↩ Back
           </button>
         </div>
 
