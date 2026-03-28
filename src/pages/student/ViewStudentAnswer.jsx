@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { label: "View Answer Key", icon: "📖", path: "/student/answer-key", active: true },
   { label: "View Result", icon: "📊", path: "/student/result" },
 ];
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 const ViewAnswerKey = () => {
@@ -21,7 +22,9 @@ const ViewAnswerKey = () => {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const res = await  fetch(`${API_BASE}/api/students/courses/byclass/${storedUser.classId}`);
+        const res = await fetch(
+          `${API_BASE}/api/students/courses/byclass/${user.classId}` // ✅ FIXED
+        );
         const data = await res.json();
         setCourses(Array.isArray(data.courses) ? data.courses : []);
       } catch (err) {
@@ -29,8 +32,8 @@ const ViewAnswerKey = () => {
       }
     };
 
-    if (user?.rollNo) fetchCourses();
-  }, [user?.rollNo]);
+    if (user?.classId) fetchCourses(); // ✅ FIXED
+  }, [user?.classId]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
