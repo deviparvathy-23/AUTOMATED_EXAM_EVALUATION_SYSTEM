@@ -92,7 +92,7 @@ const UploadMaterials = () => {
       return;
     }
 
-    // setIsEvaluating(true);
+     setIsEvaluating(true);
 
     try {
       const formData = new FormData();
@@ -180,13 +180,13 @@ const UploadMaterials = () => {
       console.error(err);
       alert(err.message || "Something went wrong");
     } finally {
-      // setIsEvaluating(false);
+       setIsEvaluating(false);
     }
   };
 
   return (
     <div className="container">
-      /* {isEvaluating && <EvaluatingModal />} */
+      {isEvaluating && <EvaluatingModal message="Uploading Materials…" />}  {/* ✅ fix this */}
 
       <aside className="sidebar">
         <h2 className="logo">SAGE</h2>
