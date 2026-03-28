@@ -174,7 +174,7 @@ const UploadMaterials = () => {
 
       // console.log("Evaluation success:", evalData);
       alert("Uploaded successfully ✅");
-
+      navigate("/teacher");
       // navigate("/view-mark", { state: { exam } });
     } catch (err) {
       console.error(err);
