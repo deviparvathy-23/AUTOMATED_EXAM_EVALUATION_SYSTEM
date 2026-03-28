@@ -98,6 +98,7 @@ const UploadMaterials = () => {
       const formData = new FormData();
       formData.append("course", exam.course || "");
       formData.append("examType", exam.examType || "");
+      formData.append("evalType", exam.evalType || "");
       formData.append("classId", exam.classId || "");
       formData.append("examId", exam._id || "");
 
