@@ -197,7 +197,7 @@ MAX_MARKS: [total maximum marks from the question paper]
 
 | Roll No | Q1 | Max Marks | Marks Awarded | Justification | Q2 | Max Marks | Marks Awarded | Justification | ... (repeat for ALL questions) | Total Marks |
 |---|---|---|---|---|---|---|---|---|---|
-| [rollNo] | [Q1 label] | [max] | [awarded] | [justification] | ... | [total awarded] |
+| [rollNo] | Q1 | [max marks for Q1] | [marks awarded for Q1] | [justification for Q1] | Q2 | [max marks for Q2] | [marks awarded for Q2] | [justification for Q2] | ... | [total awarded] |
 
 CRITICAL OUTPUT RULES:
 - Line 1 MUST be: MAX_MARKS: [number]
