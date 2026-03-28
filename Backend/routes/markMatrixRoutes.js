@@ -124,12 +124,8 @@ router.get("/filters", authTeacher, async (req, res) => {
     });
   }
 });
-
 /* ===============================
    PARSE RESULT TABLE
-   Handles both formats:
-   Format A (data row has Q labels): | 61 | Q1 | 3 | 3 | Justification | Q2 | ...
-   Format B (data row has no Q labels): | 10 | 1 | 3 | 3 | Justification | 2 | ...
 =============================== */
 const parseResultTableForDisplay = (resultTable) => {
   if (!resultTable || typeof resultTable !== "string") {
@@ -146,44 +142,40 @@ const parseResultTableForDisplay = (resultTable) => {
   const splitRow = (row) =>
     row.split("|").map((c) => c.trim()).filter(Boolean);
 
-  const headerCells = splitRow(rows[0]);
-  const dataCells   = splitRow(rows[2]);
+  const dataCells = splitRow(rows[2]);
 
   const questions = [];
 
-  for (let i = 0; i < headerCells.length; i++) {
-    // Only process cells whose header is a Q label (Q1, Q2, ...)
-    if (!/^q\d+$/i.test(headerCells[i])) continue;
-
-    const label = headerCells[i].toUpperCase();
-
-    // Determine data offset:
-    // Format A — dataCells[i] repeats the Q label → values at i+1, i+2, i+3
-    // Format B — dataCells[i] is already the max marks → values at i, i+1, i+2
-    let dataStart;
+  // Find the first Q label to determine starting index
+  let startIndex = -1;
+  for (let i = 0; i < dataCells.length; i++) {
     if (/^q\d+$/i.test(dataCells[i])) {
-      dataStart = i + 1; // Format A
-    } else {
-      dataStart = i;     // Format B
+      startIndex = i;
+      break;
     }
+  }
 
-    const max    = parseFloat(dataCells[dataStart]);
-    const marks  = parseFloat(dataCells[dataStart + 1]);
-    const reason = dataCells[dataStart + 2] || "";
+  if (startIndex === -1) return { questions: [] };
 
-    if (!isNaN(max) && !isNaN(marks)) {
-      questions.push({
-        question:        label,
-        max:             max,
-        marks:           marks,
-        deductionReason: reason,
-      });
-    }
+  // From startIndex, groups of 4: Qn | Max | Marks | Justification
+  for (let i = startIndex; i < dataCells.length - 1; i += 4) {
+    const label  = dataCells[i];
+    if (!/^q\d+$/i.test(label)) break;
+
+    const max    = parseFloat(dataCells[i + 1]) || 0;
+    const marks  = parseFloat(dataCells[i + 2]) || 0;
+    const reason = dataCells[i + 3] || "";
+
+    questions.push({
+      question:        label,
+      max:             isNaN(max)   ? 0 : max,
+      marks:           isNaN(marks) ? 0 : marks,
+      deductionReason: reason,
+    });
   }
 
   return { questions };
 };
-
 /* ===============================
    GET RESULTS
 =============================== */
@@ -201,12 +193,12 @@ router.get("/results", authTeacher, async (req, res) => {
     const validPairs = await getTeacherPairs(teacherId);
 
     const reqCourse = normalize(course);
-    const reqClass  = normalize(classId);
-    const reqExam   = String(examType).trim();
+    const reqClass = normalize(classId);
+    const reqExam = String(examType).trim();
 
     const allowed = validPairs.some(
       (p) =>
-        normalize(p.course)  === reqCourse &&
+        normalize(p.course) === reqCourse &&
         normalize(p.classId) === reqClass
     );
 
@@ -216,31 +208,34 @@ router.get("/results", authTeacher, async (req, res) => {
       });
     }
 
-    const rows = await MarkMatrix.find({ examType: reqExam }).lean();
+    const rows = await MarkMatrix.find({
+      examType: reqExam,
+    }).lean();
 
     const filteredRows = rows
-      .filter(
-        (row) =>
-          normalize(row.course)  === reqCourse &&
-          normalize(row.classId) === reqClass
-      )
-      .map((row) => {
-        const parsed = parseResultTableForDisplay(row.resultTable);
+  .filter(
+    (row) =>
+      normalize(row.course) === reqCourse &&
+      normalize(row.classId) === reqClass
+  )
+  .map((row) => {
+  const parsed = parseResultTableForDisplay(row.resultTable);
 
-        const total    = row.totalMarks;
-        const maxTotal = row.maxMarks;
-        const pct      = maxTotal > 0 ? Math.round((total / maxTotal) * 100) : 0;
+  const total    = row.totalMarks;
+  const maxTotal = row.maxMarks;
+  const pct      = maxTotal > 0 ? Math.round((total / maxTotal) * 100) : 0;
 
-        const { questions: _old, ...rowWithoutQuestions } = row;
+  // Explicitly delete old stored questions to avoid confusion
+  const { questions: _old, ...rowWithoutQuestions } = row;
 
-        return {
-          ...rowWithoutQuestions,
-          questions: parsed.questions,
-          total,
-          maxTotal,
-          pct,
-        };
-      });
+  return {
+    ...rowWithoutQuestions,
+    questions: parsed.questions,  // always use freshly parsed questions
+    total,
+    maxTotal,
+    pct,
+  };
+});
 
     filteredRows.sort((a, b) =>
       String(a.rollNo || "").localeCompare(String(b.rollNo || ""), undefined, {
