@@ -255,7 +255,7 @@ const ViewResult = () => {
             {result.questions.map((q, i) => (
               <tr key={i} className="vsr-tr">
                 <td className="vsr-td">{q.question?.toUpperCase()}</td>
-                <td className="vsr-td">{q.max}</td>
+               <td className="vsr-td">{q.maxMarks}</td> 
                 <td className="vsr-td">{q.marks}</td>
                 <td className="vsr-td">{q.deductionReason || "—"}</td>
               </tr>
