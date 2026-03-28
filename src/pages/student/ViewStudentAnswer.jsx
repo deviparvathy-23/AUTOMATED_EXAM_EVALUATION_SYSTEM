@@ -21,10 +21,7 @@ const ViewAnswerKey = () => {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const res = await fetch(
-          `${API_BASE}/api/students/courses/${user.rollNo}`
-        );
-
+        const res = await  fetch(`${API_BASE}/api/students/courses/byclass/${storedUser.classId}`);
         const data = await res.json();
         setCourses(Array.isArray(data.courses) ? data.courses : []);
       } catch (err) {
