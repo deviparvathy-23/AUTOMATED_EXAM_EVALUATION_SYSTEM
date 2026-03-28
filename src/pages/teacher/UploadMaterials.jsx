@@ -47,7 +47,7 @@ const EvaluatingModal = () => (
         <div className="eval-ring eval-ring--3" />
         <span className="eval-icon">📋</span>
       </div>
-      <h3 className="eval-title">Evaluating Answers</h3>
+      <h3 className="eval-title">Uploading Materials</h3>
       <p className="eval-subtitle">
         Please wait while SAGE processes the submissions…
       </p>
