@@ -128,9 +128,7 @@ router.get("/filters", authTeacher, async (req, res) => {
    PARSE RESULT TABLE
 =============================== */
 const parseResultTableForDisplay = (resultTable) => {
-  if (!resultTable || typeof resultTable !== "string") {
-    return { questions: [] };
-  }
+  if (!resultTable || typeof resultTable !== "string") return { questions: [] };
 
   const rows = resultTable
     .split("\n")
@@ -139,39 +137,77 @@ const parseResultTableForDisplay = (resultTable) => {
 
   if (rows.length < 3) return { questions: [] };
 
-  const splitRow = (row) =>
-    row.split("|").map((c) => c.trim()).filter(Boolean);
+  // ── Find Q-label positions from the header row ──────────────────────────
+  // Instead of splitting by | and indexing, we find character positions of
+  // each Q label in the header, then extract the same column ranges from data row
 
-  const dataCells = splitRow(rows[2]);
+  const headerRow = rows[0];
+  const dataRow   = rows[2];
+
+  // Build an array of {label, charIndex} for every Q label in the header
+  const qPositions = [];
+  const headerParts = headerRow.split("|");
+  let charPos = 0;
+
+  for (let i = 0; i < headerParts.length; i++) {
+    const cell = headerParts[i].trim();
+    if (/^q\d+$/i.test(cell)) {
+      qPositions.push({ label: cell.toUpperCase(), colIndex: i });
+    }
+    charPos += headerParts[i].length + 1; // +1 for the | separator
+  }
+
+  if (!qPositions.length) return { questions: [] };
+
+  // ── Split data row by | but respect that justification may contain | ──────
+  // Strategy: for each Q group, we know the column indices from the header.
+  // col offset from Q label: +1=max, +2=marks, +3=justification (may span multiple splits)
+  // We extract by known column count from header structure.
+
+  const dataParts = dataRow.split("|");
 
   const questions = [];
 
-  // Find the first Q label to determine starting index
-  let startIndex = -1;
-  for (let i = 0; i < dataCells.length; i++) {
-    if (/^q\d+$/i.test(dataCells[i])) {
-      startIndex = i;
-      break;
+  for (const { label, colIndex } of qPositions) {
+    // colIndex is the position in headerParts array (includes empty first cell)
+    // dataParts[colIndex] should be either the Q label (Format A) or max marks (Format B)
+
+    let dataStart;
+    if (/^q\d+$/i.test(dataParts[colIndex]?.trim())) {
+      dataStart = colIndex + 1; // Format A — Q label repeated in data
+    } else {
+      dataStart = colIndex;     // Format B — data starts directly at colIndex
     }
-  }
 
-  if (startIndex === -1) return { questions: [] };
+    const max    = parseFloat(dataParts[dataStart]?.trim());
+    const marks  = parseFloat(dataParts[dataStart + 1]?.trim());
 
-  // From startIndex, groups of 4: Qn | Max | Marks | Justification
-  for (let i = startIndex; i < dataCells.length - 1; i += 4) {
-    const label  = dataCells[i];
-    if (!/^q\d+$/i.test(label)) break;
+    // Justification: join remaining parts until we hit the next Q label or Total Marks
+    // Find next Q's colIndex to know where justification ends
+    const currentQIdx = qPositions.indexOf(qPositions.find(q => q.label === label));
+    const nextQColIndex = qPositions[currentQIdx + 1]?.colIndex;
 
-    const max    = parseFloat(dataCells[i + 1]) || 0;
-    const marks  = parseFloat(dataCells[i + 2]) || 0;
-    const reason = dataCells[i + 3] || "";
+    let justParts = [];
+    const justStart = dataStart + 2;
+    const justEnd   = nextQColIndex
+      ? ((/^q\d+$/i.test(dataParts[nextQColIndex]?.trim()))
+          ? nextQColIndex        // Format A next Q
+          : nextQColIndex)       // Format B next Q
+      : dataParts.length - 2;   // last Q — stop before Total Marks cell
 
-    questions.push({
-      question:        label,
-      max:             isNaN(max)   ? 0 : max,
-      marks:           isNaN(marks) ? 0 : marks,
-      deductionReason: reason,
-    });
+    for (let j = justStart; j < justEnd; j++) {
+      if (dataParts[j] !== undefined) justParts.push(dataParts[j]);
+    }
+    const reason = justParts.join("|").trim(); // re-join with | for embedded pipes
+
+    if (!isNaN(max) && !isNaN(marks)) {
+      questions.push({
+        question:        label,
+        max:             max,
+        marks:           marks,
+        deductionReason: reason,
+      });
+    }
   }
 
   return { questions };
