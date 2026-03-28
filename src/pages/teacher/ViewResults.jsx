@@ -6,47 +6,28 @@ import "../admin/AdminDashboard.css";
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const NAV_ITEMS = [
-  { label: "Dashboard", icon: "⊞", path: "/teacher" },
-  { label: "Evaluation", icon: "📋", path: "/evaluation" },
-  { label: "View Results", icon: "📊", path: "/view-mark" , active: true},
+  { label: "Dashboard",        icon: "⊞", path: "/teacher" },
+  { label: "Evaluation",       icon: "📋", path: "/evaluation" },
+  { label: "View Results",     icon: "📊", path: "/view-mark", active: true },
   { label: "Reference Answer", icon: "📖", path: "/reference-answer" },
-  { label: "Revaluation", icon: "🔄", path: "/revaluation" },
-  { label: "My Classes",icon:"🏫",path:"/courseclass"},
+  { label: "Revaluation",      icon: "🔄", path: "/revaluation" },
+  { label: "My Classes",       icon: "🏫", path: "/courseclass" },
 ];
 
-// ── Same parser used in student ViewResult ────────────────────────────────────
-const parseResultTable = (markdown) => {
-  if (!markdown) return { headers: [], dataRows: [] };
-  const lines = markdown
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.startsWith("|"));
-  if (lines.length < 2) return { headers: [], dataRows: [] };
-  const splitRow = (line) =>
-    line
-      .split("|")
-      .filter((_, i, arr) => i !== 0 && i !== arr.length - 1)
-      .map((c) => c.trim());
-  return {
-    headers:  splitRow(lines[0]),
-    dataRows: lines.slice(2).map(splitRow),
-  };
-};
-
 const ViewResult = () => {
-  const navigate  = useNavigate();
-  const teacher   = JSON.parse(localStorage.getItem("user"));
-  const token     = localStorage.getItem("token");
+  const navigate = useNavigate();
+  const teacher  = JSON.parse(localStorage.getItem("user"));
+  const token    = localStorage.getItem("token");
 
-  const [filters,         setFilters]         = useState([]);
-  const [selectedClass,   setSelectedClass]   = useState("");
-  const [selectedCourse,  setSelectedCourse]  = useState("");
-  const [selectedExam,    setSelectedExam]    = useState("");
-  const [results,         setResults]         = useState([]);
-  const [expandedRollNo,  setExpandedRollNo]  = useState(null);
-  const [message,         setMessage]         = useState("");
+  const [filters,        setFilters]        = useState([]);
+  const [selectedClass,  setSelectedClass]  = useState("");
+  const [selectedCourse, setSelectedCourse] = useState("");
+  const [selectedExam,   setSelectedExam]   = useState("");
+  const [results,        setResults]        = useState([]);
+  const [expandedRollNo, setExpandedRollNo] = useState(null);
+  const [message,        setMessage]        = useState("");
 
-  // ── Load filters ────────────────────────────────────────────────────────────
+  /* ── Load filters ── */
   useEffect(() => {
     if (!token) return;
     axios
@@ -57,7 +38,7 @@ const ViewResult = () => {
       .catch((err) => { console.error(err); setFilters([]); });
   }, [token]);
 
-  // ── Derived filter options ──────────────────────────────────────────────────
+  /* ── Derived filter options ── */
   const classOptions = useMemo(
     () => [...new Set(filters.map((f) => f.classId))],
     [filters]
@@ -78,7 +59,7 @@ const ViewResult = () => {
     return item?.exams || [];
   }, [filters, selectedClass, selectedCourse]);
 
-  // ── Fetch results ───────────────────────────────────────────────────────────
+  /* ── Fetch results ── */
   const handleView = async () => {
     if (!selectedClass || !selectedCourse || !selectedExam) {
       alert("Please select class, course and exam");
@@ -151,7 +132,8 @@ const ViewResult = () => {
         <h1 className="page-title">View <span>Results</span></h1>
 
         {/* Filters */}
-        <div className="com-card filter-card"
+        <div
+          className="com-card filter-card"
           style={{ display: "flex", gap: "20px", alignItems: "flex-end", flexWrap: "wrap" }}
         >
           <div className="filter-group">
@@ -181,10 +163,7 @@ const ViewResult = () => {
               ))}
             </select>
           </div>
-          <button
-            className="com-btn view-btn inline-btn"
-            onClick={handleView}
-          >
+          <button className="com-btn view-btn inline-btn" onClick={handleView}>
             View Results
           </button>
         </div>
@@ -205,9 +184,7 @@ const ViewResult = () => {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
                 <p style={{ fontWeight: 600 }}>{results.length} students</p>
-                <button className="com-btn ghost-btn inline-btn">
-                  Export Excel
-                </button>
+                <button className="com-btn ghost-btn inline-btn">Export Excel</button>
               </div>
             </div>
 
@@ -228,9 +205,6 @@ const ViewResult = () => {
                     ? ((row.totalMarks / row.maxMarks) * 100).toFixed(1)
                     : "—";
 
-                  // ── Parse exactly like student ViewResult ──────────────────
-                  const { headers, dataRows } = parseResultTable(row.resultTable);
-
                   return (
                     <React.Fragment key={row._id || row.rollNo}>
 
@@ -250,13 +224,13 @@ const ViewResult = () => {
                         </td>
                       </tr>
 
-                      {/* ── Expanded detail — identical to student view ── */}
+                      {/* Expanded detail */}
                       {isOpen && (
                         <tr>
                           <td colSpan={5} className="vr-expanded-td">
                             <div className="vr-expanded-inner">
 
-                              {/* Summary header — mirrors student vsr-summary-row */}
+                              {/* Summary header */}
                               <div className="vsr-summary-row">
                                 <div>
                                   <h3 className="vsr-summary-title">
@@ -272,25 +246,27 @@ const ViewResult = () => {
                                 </div>
                               </div>
 
-                              {/* Full markdown table — same as student marks tab */}
+                              {/* Question-wise marks */}
                               <p className="vsr-section-label">Question-wise marks</p>
 
-                              {headers.length > 0 ? (
+                              {row.questions?.length > 0 ? (
                                 <div className="vsr-table-wrap">
                                   <table className="vsr-table">
                                     <thead>
                                       <tr>
-                                        {headers.map((h, i) => (
-                                          <th key={i} className="vsr-th">{h}</th>
-                                        ))}
+                                        <th className="vsr-th">Q No</th>
+                                        <th className="vsr-th">Max Marks</th>
+                                        <th className="vsr-th">Marks Awarded</th>
+                                        <th className="vsr-th">Justification</th>
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {dataRows.map((cells, ri) => (
-                                        <tr key={ri} className="vsr-tr">
-                                          {cells.map((cell, ci) => (
-                                            <td key={ci} className="vsr-td">{cell}</td>
-                                          ))}
+                                      {row.questions.map((q, i) => (
+                                        <tr key={i} className="vsr-tr">
+                                          <td className="vsr-td">{q.question?.toUpperCase()}</td>
+                                          <td className="vsr-td">{q.max}</td>
+                                          <td className="vsr-td">{q.marks}</td>
+                                          <td className="vsr-td">{q.deductionReason || "—"}</td>
                                         </tr>
                                       ))}
                                     </tbody>
