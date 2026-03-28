@@ -141,73 +141,62 @@ router.post("/result", async (req, res) => {
   try {
     const { rollNo, course, examType } = req.body;
 
-    const result = await MarkMatrix.findOne({
-      rollNo,
-      course,
-      examType,
-    });
+    const result = await MarkMatrix.findOne({ rollNo, course, examType });
 
-    if (!result) {
-      return res.json({ result: null });
-    }
+    if (!result) return res.json({ result: null });
 
     const rows = result.resultTable
       .split("\n")
       .map((r) => r.trim())
-      .filter((r) => r.includes("|"));
+      .filter((r) => r.startsWith("|"));
 
     if (rows.length < 3) {
-      return res.json({
-        result: { ...result.toObject(), questions: [] },
-      });
+      return res.json({ result: { ...result.toObject(), questions: [] } });
     }
 
-    const headerCells = rows[0]
-      .split("|")
-      .map((c) => c.trim())
-      .filter(Boolean);
+    const splitRow = (row) =>
+      row.split("|").map((c) => c.trim()).filter(Boolean);
 
-    const dataCells = rows[2]
-      .split("|")
-      .map((c) => c.trim())
-      .filter(Boolean);
+    const dataCells = splitRow(rows[2]);
 
     const questions = [];
 
-    let dataIndex = 1;
-
-    for (let i = 1; i < headerCells.length; i += 4) {
-      const questionLabel = headerCells[i];
-
-      if (!questionLabel || /total marks/i.test(questionLabel)) {
+    // Find where Q labels start
+    let startIndex = -1;
+    for (let i = 0; i < dataCells.length; i++) {
+      if (/^q\d+$/i.test(dataCells[i])) {
+        startIndex = i;
         break;
       }
-
-      const max = parseFloat(dataCells[dataIndex]);
-      const marks = parseFloat(dataCells[dataIndex + 1]);
-      const reason = dataCells[dataIndex + 2] || "";
-
-      if (!isNaN(max) && !isNaN(marks)) {
-        questions.push({
-          question: questionLabel,
-          maxMarks: max,
-          marks,
-          deductionReason: reason,
-          excluded: /not counted in total/i.test(reason),
-        });
-      }
-
-      dataIndex += 3;
     }
 
-    const storedTotal = parseFloat(dataCells[dataCells.length - 1]);
+    if (startIndex !== -1) {
+      // Groups of 4: Qn | Max | Marks | Justification
+      for (let i = startIndex; i < dataCells.length - 1; i += 4) {
+        const label = dataCells[i];
+        if (!/^q\d+$/i.test(label)) break;
 
-    res.json({
+        const max    = parseFloat(dataCells[i + 1]);
+        const marks  = parseFloat(dataCells[i + 2]);
+        const reason = dataCells[i + 3] || "";
+
+        if (!isNaN(max) && !isNaN(marks)) {
+          questions.push({
+            question: label.toUpperCase(),
+            maxMarks: max,
+            marks,
+            deductionReason: reason,
+          });
+        }
+      }
+    }
+
+    return res.json({
       result: {
         ...result.toObject(),
         questions,
-        storedTotal: !isNaN(storedTotal) ? storedTotal : null,
-        maxMarks: result.maxMarks
+        maxMarks: result.maxMarks,
+        totalMarks: result.totalMarks,
       },
     });
 
