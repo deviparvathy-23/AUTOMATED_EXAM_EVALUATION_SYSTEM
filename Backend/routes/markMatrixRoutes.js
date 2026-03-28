@@ -15,14 +15,11 @@ const router = express.Router();
 const authTeacher = (req, res, next) => {
   try {
     const auth = req.headers.authorization;
-
     if (!auth || !auth.startsWith("Bearer ")) {
       return res.status(401).json({ message: "No token provided" });
     }
-
     const token = auth.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
     req.user = decoded;
     next();
   } catch (err) {
@@ -51,10 +48,7 @@ const getTeacherPairs = async (teacherId) => {
     return [];
   }
 
-  const mappings = await CourseMapping.find({
-    teacherId: teacherObjectId,
-  }).lean();
-
+  const mappings = await CourseMapping.find({ teacherId: teacherObjectId }).lean();
   if (!mappings.length) return [];
 
   const pairs = await Promise.all(
@@ -64,18 +58,10 @@ const getTeacherPairs = async (teacherId) => {
           Class.findById(m.classId).lean(),
           Course.findById(m.courseId).lean(),
         ]);
-
-        const classString =
-          classDoc?.classId || classDoc?.name || classDoc?.className || "";
-        const courseString =
-          courseDoc?.courseName || courseDoc?.name || courseDoc?.courseId || "";
-
+        const classString  = classDoc?.classId  || classDoc?.name  || classDoc?.className  || "";
+        const courseString = courseDoc?.courseName || courseDoc?.name || courseDoc?.courseId || "";
         if (!classString || !courseString) return null;
-
-        return {
-          classId: String(classString).trim(),
-          course: String(courseString).trim(),
-        };
+        return { classId: String(classString).trim(), course: String(courseString).trim() };
       } catch (err) {
         console.error("Error resolving mapping:", err.message);
         return null;
@@ -91,26 +77,23 @@ const getTeacherPairs = async (teacherId) => {
 =============================== */
 router.get("/filters", authTeacher, async (req, res) => {
   try {
-    const teacherId = getTeacherIdFromToken(req.user);
+    const teacherId  = getTeacherIdFromToken(req.user);
     const validPairs = await getTeacherPairs(teacherId);
 
-    if (!validPairs.length) {
-      return res.json([]);
-    }
+    if (!validPairs.length) return res.json([]);
 
     const filters = [];
-
     for (const pair of validPairs) {
       const rows = await MarkMatrix.find({
         classId: pair.classId,
-        course: pair.course,
+        course:  pair.course,
       }).select("examType");
 
       if (rows.length > 0) {
         filters.push({
           courseName: pair.course,
-          classId: pair.classId,
-          exams: [...new Set(rows.map((r) => r.examType))],
+          classId:    pair.classId,
+          exams:      [...new Set(rows.map((r) => r.examType))],
         });
       }
     }
@@ -118,14 +101,16 @@ router.get("/filters", authTeacher, async (req, res) => {
     return res.json(filters);
   } catch (err) {
     console.error("Filter load error:", err);
-    return res.status(500).json({
-      message: "Failed to load filters",
-      error: err.message,
-    });
+    return res.status(500).json({ message: "Failed to load filters", error: err.message });
   }
 });
+
 /* ===============================
    PARSE RESULT TABLE
+   Handles:
+   - Format A: data row repeats Q label → | 61 | Q1 | 3 | 3 | Justification | Q2 | ...
+   - Format B: data row skips Q label   → | 10 | 1  | 3 | 3 | Justification | 2  | ...
+   - Pipe characters INSIDE justification text (e.g. S→abAA|ab)
 =============================== */
 const parseResultTableForDisplay = (resultTable) => {
   if (!resultTable || typeof resultTable !== "string") return { questions: [] };
@@ -137,81 +122,76 @@ const parseResultTableForDisplay = (resultTable) => {
 
   if (rows.length < 3) return { questions: [] };
 
-  // ── Find Q-label positions from the header row ──────────────────────────
-  // Instead of splitting by | and indexing, we find character positions of
-  // each Q label in the header, then extract the same column ranges from data row
-
   const headerRow = rows[0];
   const dataRow   = rows[2];
 
-  // Build an array of {label, charIndex} for every Q label in the header
-  const qPositions = [];
-  const headerParts = headerRow.split("|");
-  let charPos = 0;
+  // Step 1: get Q labels in order from header
+  const headerParts = headerRow.split("|").map((c) => c.trim());
+  const qLabels = headerParts
+    .filter((c) => /^q\d+$/i.test(c))
+    .map((c) => c.toUpperCase());
 
-  for (let i = 0; i < headerParts.length; i++) {
-    const cell = headerParts[i].trim();
-    if (/^q\d+$/i.test(cell)) {
-      qPositions.push({ label: cell.toUpperCase(), colIndex: i });
-    }
-    charPos += headerParts[i].length + 1; // +1 for the | separator
-  }
+  if (!qLabels.length) return { questions: [] };
 
-  if (!qPositions.length) return { questions: [] };
-
-  // ── Split data row by | but respect that justification may contain | ──────
-  // Strategy: for each Q group, we know the column indices from the header.
-  // col offset from Q label: +1=max, +2=marks, +3=justification (may span multiple splits)
-  // We extract by known column count from header structure.
-
-  const dataParts = dataRow.split("|");
+  // Step 2: detect format — does data row repeat Q labels?
+  const isFormatA = new RegExp(`\\|\\s*${qLabels[0]}\\s*\\|`, "i").test(dataRow);
 
   const questions = [];
 
-  for (const { label, colIndex } of qPositions) {
-    // colIndex is the position in headerParts array (includes empty first cell)
-    // dataParts[colIndex] should be either the Q label (Format A) or max marks (Format B)
+  if (isFormatA) {
+    // Format A: split data row on "| Qn |" boundaries
+    // This correctly handles pipes inside justification text
+    const splitPattern = new RegExp(`\\|\\s*(${qLabels.join("|")})\\s*\\|`, "gi");
+    const matches = [...dataRow.matchAll(splitPattern)];
 
-    let dataStart;
-    if (/^q\d+$/i.test(dataParts[colIndex]?.trim())) {
-      dataStart = colIndex + 1; // Format A — Q label repeated in data
-    } else {
-      dataStart = colIndex;     // Format B — data starts directly at colIndex
+    for (let i = 0; i < matches.length; i++) {
+      const label    = matches[i][1].toUpperCase();
+      const segStart = matches[i].index + matches[i][0].length;
+      const segEnd   = matches[i + 1]?.index ?? dataRow.lastIndexOf("|");
+      const segment  = dataRow.slice(segStart, segEnd);
+
+      // segment = " max | marks | justification (may contain |) "
+      const firstPipe  = segment.indexOf("|");
+      const secondPipe = segment.indexOf("|", firstPipe + 1);
+
+      const max    = parseFloat(segment.slice(0, firstPipe).trim());
+      const marks  = parseFloat(segment.slice(firstPipe + 1, secondPipe).trim());
+      const rawJust = segment.slice(secondPipe + 1);
+      const reason  = rawJust.replace(/\s*\|\s*$/, "").trim();
+
+      if (!isNaN(max) && !isNaN(marks)) {
+        questions.push({ question: label, max, marks, deductionReason: reason });
+      }
     }
 
-    const max    = parseFloat(dataParts[dataStart]?.trim());
-    const marks  = parseFloat(dataParts[dataStart + 1]?.trim());
+  } else {
+    // Format B: header drives column positions, data has numbers not Q labels
+    const qColIndices = qLabels.map((q) => ({
+      label:    q,
+      colIndex: headerParts.findIndex((c) => c.toUpperCase() === q),
+    }));
 
-    // Justification: join remaining parts until we hit the next Q label or Total Marks
-    // Find next Q's colIndex to know where justification ends
-    const currentQIdx = qPositions.indexOf(qPositions.find(q => q.label === label));
-    const nextQColIndex = qPositions[currentQIdx + 1]?.colIndex;
+    const dataCells = dataRow.split("|").map((c) => c.trim());
 
-    let justParts = [];
-    const justStart = dataStart + 2;
-    const justEnd   = nextQColIndex
-      ? ((/^q\d+$/i.test(dataParts[nextQColIndex]?.trim()))
-          ? nextQColIndex        // Format A next Q
-          : nextQColIndex)       // Format B next Q
-      : dataParts.length - 2;   // last Q — stop before Total Marks cell
+    for (let qi = 0; qi < qColIndices.length; qi++) {
+      const { label, colIndex } = qColIndices[qi];
 
-    for (let j = justStart; j < justEnd; j++) {
-      if (dataParts[j] !== undefined) justParts.push(dataParts[j]);
-    }
-    const reason = justParts.join("|").trim(); // re-join with | for embedded pipes
+      const max   = parseFloat(dataCells[colIndex + 1]);
+      const marks = parseFloat(dataCells[colIndex + 2]);
 
-    if (!isNaN(max) && !isNaN(marks)) {
-      questions.push({
-        question:        label,
-        max:             max,
-        marks:           marks,
-        deductionReason: reason,
-      });
+      const nextColIndex = qColIndices[qi + 1]?.colIndex ?? (dataCells.length - 2);
+      const justCells    = dataCells.slice(colIndex + 3, nextColIndex);
+      const reason       = justCells.join("|").trim();
+
+      if (!isNaN(max) && !isNaN(marks)) {
+        questions.push({ question: label, max, marks, deductionReason: reason });
+      }
     }
   }
 
   return { questions };
 };
+
 /* ===============================
    GET RESULTS
 =============================== */
@@ -221,61 +201,51 @@ router.get("/results", authTeacher, async (req, res) => {
     const { course, classId, examType } = req.query;
 
     if (!course || !classId || !examType) {
-      return res.status(400).json({
-        message: "course, classId and examType required",
-      });
+      return res.status(400).json({ message: "course, classId and examType required" });
     }
 
     const validPairs = await getTeacherPairs(teacherId);
 
     const reqCourse = normalize(course);
-    const reqClass = normalize(classId);
-    const reqExam = String(examType).trim();
+    const reqClass  = normalize(classId);
+    const reqExam   = String(examType).trim();
 
     const allowed = validPairs.some(
-      (p) =>
-        normalize(p.course) === reqCourse &&
-        normalize(p.classId) === reqClass
+      (p) => normalize(p.course) === reqCourse && normalize(p.classId) === reqClass
     );
 
     if (!allowed) {
-      return res.status(403).json({
-        message: "This result is not mapped to the logged-in teacher",
-      });
+      return res.status(403).json({ message: "This result is not mapped to the logged-in teacher" });
     }
 
-    const rows = await MarkMatrix.find({
-      examType: reqExam,
-    }).lean();
+    const rows = await MarkMatrix.find({ examType: reqExam }).lean();
 
     const filteredRows = rows
-  .filter(
-    (row) =>
-      normalize(row.course) === reqCourse &&
-      normalize(row.classId) === reqClass
-  )
-  .map((row) => {
-  const parsed = parseResultTableForDisplay(row.resultTable);
+      .filter(
+        (row) =>
+          normalize(row.course)  === reqCourse &&
+          normalize(row.classId) === reqClass
+      )
+      .map((row) => {
+        const parsed   = parseResultTableForDisplay(row.resultTable);
+        const total    = row.totalMarks;
+        const maxTotal = row.maxMarks;
+        const pct      = maxTotal > 0 ? Math.round((total / maxTotal) * 100) : 0;
 
-  const total    = row.totalMarks;
-  const maxTotal = row.maxMarks;
-  const pct      = maxTotal > 0 ? Math.round((total / maxTotal) * 100) : 0;
+        const { questions: _old, ...rowWithoutQuestions } = row;
 
-  // Explicitly delete old stored questions to avoid confusion
-  const { questions: _old, ...rowWithoutQuestions } = row;
-
-  return {
-    ...rowWithoutQuestions,
-    questions: parsed.questions,  // always use freshly parsed questions
-    total,
-    maxTotal,
-    pct,
-  };
-});
+        return {
+          ...rowWithoutQuestions,
+          questions: parsed.questions,
+          total,
+          maxTotal,
+          pct,
+        };
+      });
 
     filteredRows.sort((a, b) =>
       String(a.rollNo || "").localeCompare(String(b.rollNo || ""), undefined, {
-        numeric: true,
+        numeric:     true,
         sensitivity: "base",
       })
     );
@@ -283,10 +253,7 @@ router.get("/results", authTeacher, async (req, res) => {
     return res.json(filteredRows);
   } catch (err) {
     console.error("Results load error:", err);
-    return res.status(500).json({
-      message: "Failed to load results",
-      error: err.message,
-    });
+    return res.status(500).json({ message: "Failed to load results", error: err.message });
   }
 });
 
