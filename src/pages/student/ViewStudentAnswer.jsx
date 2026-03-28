@@ -110,11 +110,10 @@ const ViewAnswerKey = () => {
 
       {/* MAIN */}
       <main className="main">
+  
+
         <div className="logout-container">
-          <button
-            className="com-btn logout-btn-top"
-            onClick={handleLogout}
-          >
+          <button className="com-btn logout-btn-top" onClick={() => navigate("/login")}>
             ↩ Back
           </button>
         </div>
