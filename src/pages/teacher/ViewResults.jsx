@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
 import "../admin/AdminDashboard.css";
 
@@ -96,6 +97,71 @@ const ViewResult = () => {
     setSelectedExam(e.target.value);
     setResults([]); setMessage(""); setExpandedRollNo(null);
   };
+  const handleExportExcel = () => {
+  if (!results.length) return;
+
+  // Build dynamic headers
+  // First, find the max number of questions across all results
+  const maxQ = results.reduce((max, row) => {
+    const { dataRows } = parseResultTable(row.resultTable);
+    // Each question takes 4 columns in the table (Q label, Max, Marks, Justification)
+    // But from parsed questions array we can count directly
+    return Math.max(max, (row.questions || []).length);
+  }, 0);
+
+  // Build header row
+  const headers = ["Roll No"];
+  for (let i = 1; i <= maxQ; i++) {
+    headers.push(`Q${i} Marks`, `Q${i} Max`, `Q${i} Justification`);
+  }
+  headers.push("Total Marks", "Max Marks", "Percentage");
+
+  // Build data rows
+  const excelRows = results.map((row) => {
+    const questions = row.questions || [];
+    const dataRow = [row.rollNo];
+
+    for (let i = 0; i < maxQ; i++) {
+      const q = questions[i];
+      dataRow.push(
+        q ? q.marks    : "",
+        q ? q.max      : "",
+        q ? q.deductionReason : ""
+      );
+    }
+
+    const pct = row.maxMarks
+      ? ((row.totalMarks / row.maxMarks) * 100).toFixed(1) + "%"
+      : "—";
+
+    dataRow.push(row.totalMarks, row.maxMarks, pct);
+    return dataRow;
+  });
+
+  // Create worksheet
+  const wsData = [headers, ...excelRows];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Style header row bold by setting cell metadata
+  const range = XLSX.utils.decode_range(ws["!ref"]);
+  for (let C = range.s.c; C <= range.e.c; C++) {
+    const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+    if (!ws[cellAddress]) continue;
+    ws[cellAddress].s = { font: { bold: true } };
+  }
+
+  // Auto column widths
+  ws["!cols"] = headers.map((h) => ({ wch: Math.max(h.length + 2, 14) }));
+
+  // Create workbook and export
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Results");
+
+  const fileName = `${selectedClass}_${selectedCourse}_${selectedExam}_Results.xlsx`
+    .replace(/\s+/g, "_");
+
+  XLSX.writeFile(wb, fileName);
+};
 
   return (
     <div className="container">
@@ -184,7 +250,12 @@ const ViewResult = () => {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
                 <p style={{ fontWeight: 600 }}>{results.length} students</p>
-                <button className="com-btn ghost-btn inline-btn">Export Excel</button>
+                <button
+  className="com-btn ghost-btn inline-btn"
+  onClick={handleExportExcel}
+>
+  Export Excel
+</button>
               </div>
             </div>
 
