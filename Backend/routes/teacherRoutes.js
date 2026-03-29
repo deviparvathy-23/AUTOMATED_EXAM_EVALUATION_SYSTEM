@@ -10,6 +10,18 @@ import mongoose from "mongoose";
 
 const router = express.Router();
 
+// ── auth middleware ───────────────────────────────────────────────────────────
+function auth(req, res, next) {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided." });
+    req.user = jwt.verify(token, process.env.JWT_SECRET);
+    next();
+  } catch {
+    res.status(401).json({ message: "Unauthorized" });
+  }
+}
+
 // =========================
 // CREATE TEACHER
 // Auto Generate ID: CSE001, CSE002...
@@ -43,10 +55,7 @@ router.post("/", async (req, res) => {
 
     await teacher.save();
 
-    res.status(201).json({
-      message: "Teacher added successfully",
-      teacher,
-    });
+    res.status(201).json({ message: "Teacher added successfully", teacher });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -61,6 +70,34 @@ router.get("/", async (req, res) => {
     res.json(teachers);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// =========================
+// CHANGE PASSWORD  ← must come before PUT /:id
+// =========================
+router.put("/change-password", auth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword)
+      return res.status(400).json({ message: "All fields are required." });
+    if (newPassword.length < 6)
+      return res.status(400).json({ message: "Password must be at least 6 characters." });
+
+    const teacher = await Teacher.findById(req.user.id);
+    if (!teacher) return res.status(404).json({ message: "Teacher not found." });
+
+    const isMatch = await bcrypt.compare(currentPassword, teacher.password);
+    if (!isMatch)
+      return res.status(400).json({ message: "Current password is incorrect." });
+
+    teacher.password = await bcrypt.hash(newPassword, 10);
+    await teacher.save();
+
+    res.json({ message: "Password changed successfully!" });
+  } catch {
+    res.status(500).json({ message: "Server error" });
   }
 });
 
@@ -81,10 +118,7 @@ router.put("/:id", async (req, res) => {
       return res.status(404).json({ message: "Teacher not found" });
     }
 
-    res.json({
-      message: "Teacher updated successfully",
-      teacher: updatedTeacher,
-    });
+    res.json({ message: "Teacher updated successfully", teacher: updatedTeacher });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -95,17 +129,13 @@ router.put("/:id", async (req, res) => {
 // =========================
 router.delete("/:id", async (req, res) => {
   try {
-    const deletedTeacher = await Teacher.findOneAndDelete({
-      id: req.params.id,
-    });
+    const deletedTeacher = await Teacher.findOneAndDelete({ id: req.params.id });
 
     if (!deletedTeacher) {
       return res.status(404).json({ message: "Teacher not found" });
     }
 
-    res.json({
-      message: "Teacher deleted successfully",
-    });
+    res.json({ message: "Teacher deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -119,27 +149,17 @@ router.post("/login", async (req, res) => {
     const { email, password } = req.body;
 
     const teacher = await Teacher.findOne({ email });
-
-    if (!teacher) {
-      return res.status(400).json({ message: "Teacher not found" });
-    }
+    if (!teacher) return res.status(400).json({ message: "Teacher not found" });
 
     const isMatch = await bcrypt.compare(password, teacher.password);
-
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid password" });
-    }
+    if (!isMatch) return res.status(400).json({ message: "Invalid password" });
 
     const token = jwt.sign({ id: teacher._id }, process.env.JWT_SECRET, {
       expiresIn: "1d",
     });
 
-    res.json({
-      message: "Login successful",
-      token,
-      teacher,
-    });
-  } catch (error) {
+    res.json({ message: "Login successful", token, teacher });
+  } catch {
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -147,16 +167,12 @@ router.post("/login", async (req, res) => {
 // =========================
 // TEACHER PROFILE
 // =========================
-router.get("/profile", async (req, res) => {
+router.get("/profile", auth, async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    const teacher = await Teacher.findById(decoded.id).select("-password");
-
+    const teacher = await Teacher.findById(req.user.id).select("-password");
     res.json(teacher);
-  } catch (err) {
-    res.status(401).json({ message: "Unauthorized" });
+  } catch {
+    res.status(500).json({ message: "Server error" });
   }
 });
 
@@ -248,7 +264,6 @@ router.get("/revaluation/:teacherId", async (req, res) => {
     });
 
     console.log("FILTERED REQUESTS:", requests);
-
     res.json(requests);
   } catch (error) {
     console.error(error);
@@ -265,10 +280,7 @@ router.put("/revaluation/:id", async (req, res) => {
 
     const updatedRequest = await Revaluation.findByIdAndUpdate(
       req.params.id,
-      {
-        newMarks: newMarks,
-        status: "reviewed",
-      },
+      { newMarks: newMarks, status: "reviewed" },
       { new: true }
     );
 
