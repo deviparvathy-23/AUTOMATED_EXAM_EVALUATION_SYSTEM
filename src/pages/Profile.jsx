@@ -214,7 +214,7 @@ const Profile = () => {
 
             <div style={{ marginTop: "16px" }}>
               <button
-                className="com-btn com-btn-primary"
+                className="com-btn view-btn inline-btn"
                 onClick={handlePwChange}
                 disabled={pwLoading}
               >
