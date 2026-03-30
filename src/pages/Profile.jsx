@@ -161,12 +161,12 @@ const Profile = () => {
 
         {/* Change Password Card */}
         {showChangePw && (
-          <div className="com-card tm-add-form" style={{ maxWidth: "500px", marginTop: "16px" }}>
+          <div className="com-card" style={{ maxWidth: "500px", marginTop: "16px" }}>
             <h3 className="section-title" style={{ marginBottom: "16px" }}>
               Change Password
             </h3>
 
-            <div className="profile-field">
+            <div className="tm-form-grid">
               <label>Current Password</label>
               <input
                 className="com-input"
@@ -175,10 +175,7 @@ const Profile = () => {
                 value={pwForm.current}
                 onChange={(e) => setPwForm({ ...pwForm, current: e.target.value })}
               />
-            </div>
-
-            <div className="profile-field">
-              <label>New Password</label>
+            
               <input
                 className="com-input"
                 type="password"
@@ -186,10 +183,7 @@ const Profile = () => {
                 value={pwForm.newPw}
                 onChange={(e) => setPwForm({ ...pwForm, newPw: e.target.value })}
               />
-            </div>
-
-            <div className="profile-field">
-              <label>Confirm New Password</label>
+            
               <input
                 className="com-input"
                 type="password"
