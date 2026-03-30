@@ -161,7 +161,7 @@ const Profile = () => {
 
         {/* Change Password Card */}
         {showChangePw && (
-          <div className="com-card" style={{ maxWidth: "500px", marginTop: "16px" }}>
+          <div className="com-card tm-add-form" style={{ maxWidth: "500px", marginTop: "16px" }}>
             <h3 className="section-title" style={{ marginBottom: "16px" }}>
               Change Password
             </h3>
