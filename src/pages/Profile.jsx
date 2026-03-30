@@ -161,7 +161,7 @@ const Profile = () => {
 
         {/* Change Password Card */}
         {showChangePw && (
-          <div className=className="com-card" style={{ maxWidth: "500px" }}>
+          <div className="com-card" style={{ maxWidth: "500px" }}>
             <h3 className="section-title" style={{ marginBottom: "16px" }}>
               Change Password
             </h3>
