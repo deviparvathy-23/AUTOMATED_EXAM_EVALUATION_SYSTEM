@@ -79,10 +79,14 @@ async function processFile(file, { course, classId, examType, examId, evalType }
 }
 
 /* ── OCR queue — runs with concurrency 3 ────────────────────────────────── */
+// In uploadscript route — replace runOcrQueue
+
 async function runOcrQueue(items) {
-  const CONCURRENCY = 3;
-  const queue = [...items];
-  const workers = Array.from({ length: CONCURRENCY }, async () => {
+  const CONCURRENCY   = 2;          // max parallel OCR calls
+  const DELAY_MS      = 3000;       // 3 second gap between each call
+  const queue         = [...items];
+
+  const worker = async () => {
     while (queue.length) {
       const { key, pdfBuffer, rollNo } = queue.shift();
       try {
@@ -100,9 +104,13 @@ async function runOcrQueue(items) {
           { $set: { ocrStatus: "failed", ocrError: err.message } }
         );
       }
+      // ✅ Wait between each call — prevents quota storm
+      await new Promise(r => setTimeout(r, DELAY_MS));
     }
-  });
-  await Promise.all(workers);
+  };
+
+  // Run with limited concurrency
+  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 }
 
 /* ── POST /answer-scripts ────────────────────────────────────────────────── */
