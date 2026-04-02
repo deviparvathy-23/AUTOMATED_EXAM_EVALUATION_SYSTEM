@@ -21,7 +21,7 @@ const MODEL  = "gemini-2.5-flash";
 
 /* ── Reference answer generator ─────────────────────────────────────────── */
 async function generateReferenceAnswers(
-  ai, course, classId, examType, qpKey, qpBytes, msKey, msBytes
+  ai, course, classId, examType, evalType, qpKey, qpBytes, msKey, msBytes
 ) {
   const contents = [
     { role: "user", parts: [{ text: REFERENCE_PROMPT }] },
@@ -46,15 +46,15 @@ async function generateReferenceAnswers(
   }
   if (!finalText) throw new Error("Empty reference answer from Gemini");
 
-  const s3Key  = `${course}/${classId}/${examType}/reference-answers/reference.pdf`;
+  const s3Key = `${course}/${classId}/${examType}/${evalType}/reference-answers/reference.pdf`;
   const pdfBuf = await textToPDFBuffer(finalText);
   await uploadToS3(BUCKET, s3Key, pdfBuf, "application/pdf");
 
   return await ReferenceAnswer.findOneAndUpdate(
-    { course, classId, examType },
-    { course, classId, examType, pdfLink: s3Key, status: false },
-    { upsert: true, new: true }
-  );
+  { course, classId, examType, evalType },
+  { course, classId, examType, evalType, pdfLink: s3Key, status: false },
+  { upsert: true, new: true }
+);
 }
 
 /* ── Main worker logic ───────────────────────────────────────────────────── */
@@ -78,7 +78,7 @@ function startWorker() {
     }
 
     // Download only what this paper needs
-    const basePrefix = `${course}/${classId}/${examType}`;
+   const basePrefix = `${course}/${classId}/${examType}/${evalType}`;
     const [qpList, msList] = await Promise.all([
       listPdfsS3(BUCKET, `${basePrefix}/question-paper/`),
       listPdfsS3(BUCKET, `${basePrefix}/marking-scheme/`),
@@ -185,10 +185,10 @@ function startWorker() {
             ]);
             const refKeyObj = await getNextApiKey();
             const refAi     = new GoogleGenAI({ apiKey: refKeyObj.key });
-            await generateReferenceAnswers(
-              refAi, course, classId, examType,
-              qpList[0], freshQp, msList[0], freshMs
-            );
+           await generateReferenceAnswers(
+  refAi, course, classId, examType, evalType,   // ← add evalType
+  qpList[0], freshQp, msList[0], freshMs
+);
             await markKeyUsed(refKeyObj.label);
             console.log("✅ [WORKER] Reference answer generated");
           }
