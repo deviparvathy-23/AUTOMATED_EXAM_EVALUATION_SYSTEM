@@ -169,3 +169,75 @@ export function startWorker() {
       // ✅ Generate reference answer after ALL papers done
       const allRows      = await MarkMatrix.find({ classId, course, examType }, { status: 1 }).lean();
       const stillPending = allRows.some((r) => r.status === "pending");
+
+      if (!stillPending) {
+        try {
+          const refExists = await ReferenceAnswer.findOne({ course, classId, examType, evalType }).lean();
+          if (refExists?.pdfLink) {
+            console.log("⏭ [WORKER] Reference answer already exists — skipping");
+          } else {
+            console.log("📝 [WORKER] All papers done — generating reference answer");
+            const [freshQp, freshMs] = await Promise.all([
+              downloadFromS3(BUCKET, qpList[0]),
+              msList[0] ? downloadFromS3(BUCKET, msList[0]) : Promise.resolve(null),
+            ]);
+            const refKeyObj = await getNextApiKey();
+            const refAi     = new GoogleGenAI({ apiKey: refKeyObj.key });
+            await generateReferenceAnswers(
+              refAi, course, classId, examType, evalType,
+              qpList[0], freshQp, msList[0], freshMs
+            );
+            await markKeyUsed(refKeyObj.label);
+            console.log("✅ [WORKER] Reference answer generated");
+          }
+        } catch (refErr) {
+          console.error("❌ [WORKER] Reference answer generation failed:", refErr?.message);
+        }
+      }
+
+      // ✅ Delay between jobs to avoid quota storms
+      await new Promise(r => setTimeout(r, 3000));
+
+      return { rollNo, totalMarks, maxMarks };
+
+    } catch (err) {
+      const isQuota = err?.message?.includes("429") ||
+                      err?.message?.includes("RESOURCE_EXHAUSTED") ||
+                      err?.message?.includes("quota");
+      const isInvalid = err?.message?.includes("INVALID_ARGUMENT") ||
+                        err?.message?.includes("API_KEY_INVALID");
+
+      if (isQuota || isInvalid) {
+        await markKeyFailed(keyObj.label, isQuota);
+      }
+
+      await MarkMatrix.updateOne(
+        { scriptKey },
+        {
+          $set: {
+            rollNo, scriptKey, classId, course, examType,
+            resultTable: "", status: "failed", error: err.message,
+          },
+        },
+        { upsert: true }
+      );
+
+      throw err;
+    }
+  });
+
+  evalQueue.on("completed", (job, result) =>
+    console.log(`✅ Queue job ${job.id} completed:`, result)
+  );
+  evalQueue.on("failed", (job, err) =>
+    console.error(`❌ Queue job ${job.id} failed (attempt ${job.attemptsMade}):`, err.message)
+  );
+  evalQueue.on("stalled", (job) =>
+    console.warn(`⚠️ Queue job ${job.id} stalled — will retry`)
+  );
+  evalQueue.on("error",   (err)   => console.error("❌ [WORKER] Queue error:", err.message));
+  evalQueue.on("waiting", (jobId) => console.log("⏳ [WORKER] Job waiting:", jobId));
+  evalQueue.on("active",  (job)   => console.log("🔄 [WORKER] Job active:", job.id));
+
+  console.log("🟢 Eval worker started — waiting for jobs...");
+}
