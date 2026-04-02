@@ -202,9 +202,30 @@ return { rollNo, totalMarks, maxMarks };
 
       return { rollNo, totalMarks, maxMarks };
 
-    } catch (err) {
-      const isQuota = err?.message?.includes("429") || err?.message?.includes("quota");
-      if (isQuota) await markKeyFailed(keyObj.label);
+    } } catch (err) {
+      const isQuota = err?.message?.includes("429") ||
+                      err?.message?.includes("RESOURCE_EXHAUSTED") ||
+                      err?.message?.includes("quota");
+      const isInvalid = err?.message?.includes("INVALID_ARGUMENT") ||
+                        err?.message?.includes("API_KEY_INVALID");
+
+      if (isQuota || isInvalid) {
+        await markKeyFailed(keyObj.label, isQuota);
+      }
+
+      await MarkMatrix.updateOne(
+        { scriptKey },
+        {
+          $set: {
+            rollNo, scriptKey, classId, course, examType,
+            resultTable: "", status: "failed", error: err.message,
+          },
+        },
+        { upsert: true }
+      );
+
+      throw err; // Bull retries automatically
+    }
 
       await MarkMatrix.updateOne(
         { scriptKey },
