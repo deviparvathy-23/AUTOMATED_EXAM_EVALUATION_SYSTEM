@@ -167,6 +167,9 @@ function startWorker() {
 
       job.progress(100);
       console.log(`✅ [WORKER] Done: rollNo=${rollNo} | ${totalMarks}/${maxMarks}`);
+      await new Promise(r => setTimeout(r, 3000));
+
+return { rollNo, totalMarks, maxMarks };
 
       // Generate reference answer only if not already created and all papers done
       const allRows      = await MarkMatrix.find({ classId, course, examType }, { status: 1 }).lean();
