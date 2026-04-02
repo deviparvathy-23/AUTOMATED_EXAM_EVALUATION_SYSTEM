@@ -1,6 +1,7 @@
 import express from "express";
 import "dotenv/config";
 import { connectDB } from "./db.js";
+import { startWorker } from "./workers/evalWorker.js";
 import studentRoutes from "./routes/student.js";
 import courseRoutes from "./routes/courseRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
