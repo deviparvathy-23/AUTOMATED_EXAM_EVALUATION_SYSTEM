@@ -69,7 +69,20 @@ app.use("/api/courseclass",    courseclass);
 app.use("/api/results",        resultRoutes);
 
 // ── Start server ──────────────────────────────────────────────────────────────
-const PORT = process.env.PORT || 5000;
+// server.js — update the listen block at the bottom
+const PORT     = process.env.PORT || 5000;
+const SELF_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+
 app.listen(PORT, () => {
   console.log(`✅ Backend running on port ${PORT}`);
+
+  // ✅ Keep-alive — prevents Render free tier from sleeping during eval
+  setInterval(async () => {
+    try {
+      const res = await fetch(`${SELF_URL}/api/health`);
+      console.log(`🏓 Keep-alive: ${res.status}`);
+    } catch (err) {
+      console.warn("⚠️ Keep-alive failed:", err.message);
+    }
+  }, 10 * 60 * 1000); // every 10 minutes
 });
