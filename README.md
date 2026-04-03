@@ -44,6 +44,17 @@ The system follows a client-server architecture:
 4. Extracted text is passed to an AI model for evaluation.
 5. Results are stored in the database and displayed to the user.
 
+## Architectural Diagram   
+
+![arch diagram](https://github.com/user-attachments/assets/f670fa84-d5ee-4186-8b95-269f4daa4113)
+
+
+## User Roles and Functionalities   
+
+### Student
+
+* 
+
 ## Deployement
 The system is deployed using Vercel and Render.   
 The deployed link is given below   
