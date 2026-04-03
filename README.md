@@ -51,9 +51,24 @@ The system follows a client-server architecture:
 
 ## User Roles and Functionalities   
 
+### Admin
+
+* Manages teacher and student profiles.
+* Manage Classes and Courses.
+* Assign Course Mapping.
+
+### Teacher
+
+* Can initiate the evaluation process by uploading question paper, marking scheme, reference text (not compulsory) and answer scripts of students (either as files or a folder).
+* Can view the generated reference answer keys.
+* Can view the results of the evaluation stored in the form of a detailed mark matrix which can be exported as Excel sheets.
+* Can view the reva;uation requests raised by the students.
+
 ### Student
 
-* 
+* Can view the result of the exams.
+* Can request for revaluation.
+* Can view the reference answer keys.
 
 ## Deployement
 The system is deployed using Vercel and Render.   
