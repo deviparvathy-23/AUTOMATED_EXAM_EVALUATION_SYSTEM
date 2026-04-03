@@ -47,7 +47,7 @@ The system follows a client-server architecture:
 ## Deployement
 The system is deployed using Vercel and Render.   
 The deployed link is given below   
-[SAGE](https://smartautomatedgradingengine.vercel.app/login)
+[Smart Automated Grading Engine](https://smartautomatedgradingengine.vercel.app/login)
 
 ## Advantages
 
