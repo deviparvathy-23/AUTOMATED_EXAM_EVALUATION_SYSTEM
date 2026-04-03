@@ -45,8 +45,8 @@ The system follows a client-server architecture:
 5. Results are stored in the database and displayed to the user.
 
 ## Deployement
-The system is deployed using Vercel and Render.
-The deployed link is given below
+The system is deployed using Vercel and Render.   
+The deployed link is given below   
 smartautomatedgradingengine.vercel.app
 
 ## Advantages
