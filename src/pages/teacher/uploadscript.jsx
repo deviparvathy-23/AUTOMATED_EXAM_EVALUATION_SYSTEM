@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../admin/AdminDashboard.css";
+import { useEvalStatus } from "./useEvalStatus";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 const BATCH_SIZE = 10;
@@ -52,7 +53,23 @@ const UploadScripts = () => {
   const folderInputRef = useRef(null);
 
   const exam = location.state?.exam ?? null;
+const [evalStarted, setEvalStarted] = useState(false);
 
+const { status, finished } = useEvalStatus({
+  classId: exam?.classId,
+  course: exam?.course,
+  examType: exam?.examType,
+  enabled: evalStarted,
+});
+
+useEffect(() => {
+  if (!finished || !status) return;
+  if (status.failed === 0) {
+    alert(`✅ Evaluation complete!\n\nAll ${status.total} papers have been evaluated for ${exam?.course}.`);
+  } else {
+    alert(`⚠️ Evaluation finished.\n\n${status.done} papers evaluated successfully.\n${status.failed} papers failed — check View Results for details.`);
+  }
+}, [finished]);
   /* ── Load teacher from localStorage ── */
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("user") || "null");
@@ -165,6 +182,7 @@ const UploadScripts = () => {
 
       /* Step 3: Immediately show success — backend evaluates independently */
       setPhase("done");
+      setEvalStarted(true); // ← ADD THIS
 
     } catch (err) {
       console.error(err);
