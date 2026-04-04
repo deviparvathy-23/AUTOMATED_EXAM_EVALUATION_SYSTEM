@@ -5,6 +5,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL;
 export function useEvalStatus({ classId, course, examType, enabled }) {
   const [status, setStatus] = useState(null);
   const [finished, setFinished] = useState(false);
+  const seenPending = useRef(false); // ← key fix
   const intervalRef = useRef(null);
 
   useEffect(() => {
@@ -12,6 +13,7 @@ export function useEvalStatus({ classId, course, examType, enabled }) {
 
     setFinished(false);
     setStatus(null);
+    seenPending.current = false; // reset on new eval
 
     const poll = async () => {
       try {
@@ -22,7 +24,13 @@ export function useEvalStatus({ classId, course, examType, enabled }) {
         const s = data.summary;
         setStatus(s);
 
-        if (s.total > 0 && s.pending === 0) {
+        // Wait until we see at least 1 pending paper first
+        if (s.pending > 0) {
+          seenPending.current = true;
+        }
+
+        // Only fire finished AFTER we saw pending papers go to 0
+        if (seenPending.current && s.pending === 0 && s.total > 0) {
           clearInterval(intervalRef.current);
           setFinished(true);
         }
