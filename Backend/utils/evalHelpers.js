@@ -102,7 +102,7 @@ STRICTNESS: AVERAGE
 
 SCORING RULES:
 1. Full marks if core concept is correct, even if explanation is slightly incomplete.
-2. Partial marks = proportion of correct content, rounded UP to nearest 0.5 when borderline.
+2. Partial marks = proportion of valid content, rounded as follows: if decimal part is below .5 round down to nearest .5; if .5 or above round up to nearest whole number..
 3. Missing key term but concept clear → deduct only 10%.
 4. Incomplete steps but correct direction → max 25% deduction.
 5. Reasonable understanding → minimum 50% marks.
@@ -119,12 +119,12 @@ STRICTNESS: LIBERAL
 SCORING RULES:
 1. Award full marks if understanding of the concept is demonstrated, even if wording is imperfect.
 2. Accept any relevant, valid points related to the question.
-3. Partial marks = proportion of valid content, ALWAYS rounded UP to nearest whole mark.
+3. Partial marks = proportion of valid content, rounded as follows: if decimal part is below .5 round down to nearest .5; if .5 or above round up to nearest whole number.
 4. Missing terminology → NO deduction if meaning is clear.
 5. Incomplete answers but correct direction → maximum 10% deduction only.
-6. Vague but relevant answers → minimum 70% marks.
+6. Vague but relevant answers → minimum 50% marks.
 7. Wrong example → still award marks if concept is otherwise correct.
-8. Diagram roughly correct → full marks.
+8. Diagram roughly correct → 20% deduction.
 9. Encourage student effort and reward understanding.
 10. Maintain leniency but ensure marks are still justified (avoid over-inflation).
 `.trim(),
