@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { label: "Reference Answer", icon: "📖", path: "/teacher/view-reference", active: true },
   { label: "Revaluation", icon: "🔄", path: "/revaluation" },
   {label:"My Classes",icon:"🏫",path:"/courseclass"},
+  { label: "API Keys",         icon: "🔑", path: "/api-keys" },
 ];
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const ReferenceAnswer = () => {
