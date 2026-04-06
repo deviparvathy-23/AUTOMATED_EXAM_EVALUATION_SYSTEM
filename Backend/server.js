@@ -18,6 +18,7 @@ import UploadscriptRoutes from "./routes/uploadscriptRoutes.js";
 import ReferenceAnswerRoutes from "./routes/referenceAnswerRoutes.js";
 import courseclass from "./routes/courseclassRoutes.js";
 import resultRoutes from "./routes/resultRoutes.js";
+import apiKeyRoutes from "./routes/apikeyroutes.js";
 
 const app = express();
 
@@ -67,6 +68,7 @@ app.use("/api/teacherlogin",   teacherlogin);
 app.use("/api/reference",      ReferenceAnswerRoutes);
 app.use("/api/courseclass",    courseclass);
 app.use("/api/results",        resultRoutes);
+app.use("/api/keys", apiKeyRoutes);
 
 // ── Start server ──────────────────────────────────────────────────────────────
 // server.js — update the listen block at the bottom
