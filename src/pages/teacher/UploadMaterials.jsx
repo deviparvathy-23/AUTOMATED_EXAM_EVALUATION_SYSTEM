@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { label: "View Results",     icon: "📊", path: "/view-mark", active: true },
   { label: "Reference Answer", icon: "📖", path: "/reference-answer" },
   { label: "Revaluation",      icon: "🔄", path: "/revaluation" },
+  { label: "API Keys",         icon: "🔑", path: "/api-keys" },
 ];
 
 const UPLOAD_TILES = [
