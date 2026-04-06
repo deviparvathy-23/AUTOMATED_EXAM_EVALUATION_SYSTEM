@@ -35,7 +35,15 @@ async function extractTextWithGemini(pdfBuffer, maxRetries = 3) {
         contents: [{
           parts: [
             { inlineData: { mimeType: "application/pdf", data: pdfBuffer.toString("base64") } },
-            { text: `You are an OCR engine. Extract ALL handwritten and printed text from this answer script PDF exactly as written.\n\nRULES:\n- Preserve question numbers and structure.\n- Do NOT summarise, interpret, or correct.\n- Separate pages with: --- PAGE [n] ---\n- Blank pages: --- PAGE [n] --- (blank)\n- Plain text only.` },
+            { text: `You are an OCR engine. Extract ALL handwritten and printed text from this answer script PDF exactly as written.
+
+RULES:
+- Output plain text only. Do NOT use markdown of any kind — no headings, no bold, no italics, no bullet points, no numbering, no formatting symbols.
+- Preserve question numbers and structure as they appear on the page.
+- Do NOT summarise, interpret, or correct any text.
+- Separate pages with: --- PAGE [n] ---
+- Blank pages: --- PAGE [n] --- (blank)
+- Every line of text must appear as a plain sentence or phrase, never as a markdown heading or list item.` },
           ],
         }],
       });
