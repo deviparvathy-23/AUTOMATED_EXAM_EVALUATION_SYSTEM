@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { label: "Reference Answer", icon: "📖", path: "/reference-answer" },
   { label: "Revaluation",      icon: "🔄", path: "/revaluation" },
   { label: "My Classes",       icon: "🏫", path: "/courseclass" },
+  { label: "API Keys",         icon: "🔑", path: "/api-keys" },
 ];
 
 const ViewResult = () => {
