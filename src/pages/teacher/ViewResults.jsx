@@ -98,32 +98,42 @@ const ViewResult = () => {
     setSelectedExam(e.target.value);
     setResults([]); setMessage(""); setExpandedRollNo(null);
   };
-// FIND and REPLACE handleExportExcel with this:
 const handleExportExcel = () => {
   if (!results.length) return;
 
-  const maxQ = results.reduce((max, row) => {
-    return Math.max(max, (row.questions || []).length);
-  }, 0);
+  // Collect all unique question labels in the order they first appear
+  const qLabelSet = new Map();
+  results.forEach((row) => {
+    (row.questions || []).forEach((q) => {
+      if (!qLabelSet.has(q.question)) {
+        qLabelSet.set(q.question, true);
+      }
+    });
+  });
+  const qLabels = [...qLabelSet.keys()];
 
   const headers = ["Roll No"];
-  for (let i = 1; i <= maxQ; i++) {
-    headers.push(`Q${i} Marks`, `Q${i} Max`, `Q${i} Justification`);
-  }
+  qLabels.forEach((label) => {
+    headers.push(`${label} Marks`, `${label} Max`, `${label} Justification`);
+  });
   headers.push("Total Marks", "Max Marks", "Percentage");
 
   const excelRows = results.map((row) => {
-    const questions = row.questions || [];
-    const dataRow = [row.rollNo];
+    // Index this row's questions by their label for O(1) lookup
+    const qMap = {};
+    (row.questions || []).forEach((q) => {
+      qMap[q.question] = q;
+    });
 
-    for (let i = 0; i < maxQ; i++) {
-      const q = questions[i];
+    const dataRow = [row.rollNo];
+    qLabels.forEach((label) => {
+      const q = qMap[label];
       dataRow.push(
         q ? q.marks           : "",
         q ? q.max             : "",
         q ? q.deductionReason : ""
       );
-    }
+    });
 
     const pct = row.maxMarks
       ? ((row.totalMarks / row.maxMarks) * 100).toFixed(1) + "%"
