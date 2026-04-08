@@ -98,15 +98,40 @@ const ViewResult = () => {
     setSelectedExam(e.target.value);
     setResults([]); setMessage(""); setExpandedRollNo(null);
   };
-const handleExportExcel = () => {
+const handleExportExcel = async () => {
   if (!results.length) return;
 
-  const normalizeLabel = (label) =>
-    String(label || "")
-      .replace(/\s+/g, "")
-      .toUpperCase();
+  // 1. Fetch full class roster for absent detection + names
+  let roster = [];
+  try {
+    const res = await axios.get(`${API_BASE}/api/students/by-class/${selectedClass}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    roster = Array.isArray(res.data) ? res.data : [];
+  } catch (err) {
+    console.error("Failed to fetch student roster", err);
+    // Continue export without absent rows if fetch fails
+  }
 
-  // Collect unique labels in first-appearance order
+  // 2. Build rollNo → name map from roster
+  const nameMap = {};
+  roster.forEach((s) => {
+    nameMap[String(s.rollNo)] = s.name;
+  });
+
+  // 3. Build rollNos that actually submitted results
+  const submittedRollNos = new Set(results.map((r) => String(r.rollNo)));
+
+  // 4. Build absent rows — students in roster but not in results
+  const absentRows = roster
+    .filter((s) => !submittedRollNos.has(String(s.rollNo)))
+    .map((s) => ({ rollNo: s.rollNo, name: s.name, absent: true }));
+
+  // 5. Normalize label helper
+  const normalizeLabel = (label) =>
+    String(label || "").replace(/\s+/g, "").toUpperCase();
+
+  // 6. Collect unique question labels in first-appearance order
   const qLabelSet = new Map();
   results.forEach((row) => {
     (row.questions || []).forEach((q) => {
@@ -115,7 +140,7 @@ const handleExportExcel = () => {
     });
   });
 
-  // Sort labels logically: Q1, Q2, Q6, Q6A, Q6B, Q7, Q7.1, Q7.2, Q8...
+  // 7. Sort labels logically: Q1, Q2, Q6, Q6A, Q6B, Q7, Q7.1 ...
   const qLabels = [...qLabelSet.keys()].sort((a, b) => {
     const parse = (label) => {
       const m = label.match(/^Q(\d+)([.\w]*)$/i);
@@ -128,20 +153,28 @@ const handleExportExcel = () => {
     return pa.suffix.localeCompare(pb.suffix);
   });
 
-  const headers = ["Roll No"];
+  // 8. Build headers — Name added after Roll No
+  const headers = ["Roll No", "Name"];
   qLabels.forEach((label) => {
     headers.push(`${label} Marks`, `${label} Max`, `${label} Justification`);
   });
   headers.push("Total Marks", "Max Marks", "Percentage");
 
-  const excelRows = results.map((row) => {
-    // Index by normalized label
+  // 9. Build present student rows
+  const presentRows = results.map((row) => {
     const qMap = {};
     (row.questions || []).forEach((q) => {
       qMap[normalizeLabel(q.question)] = q;
     });
 
-    const dataRow = [row.rollNo];
+    const pct = row.maxMarks
+      ? ((row.totalMarks / row.maxMarks) * 100).toFixed(1) + "%"
+      : "—";
+
+    const dataRow = [
+      row.rollNo,
+      nameMap[String(row.rollNo)] || "—",   // Name from roster
+    ];
     qLabels.forEach((label) => {
       const q = qMap[label];
       dataRow.push(
@@ -150,28 +183,47 @@ const handleExportExcel = () => {
         q ? q.deductionReason : ""
       );
     });
-
-    const pct = row.maxMarks
-      ? ((row.totalMarks / row.maxMarks) * 100).toFixed(1) + "%"
-      : "—";
     dataRow.push(row.totalMarks, row.maxMarks, pct);
-    return dataRow;
+    return { rollNo: row.rollNo, data: dataRow };
   });
 
-  const wsData = [headers, ...excelRows];
+  // 10. Build absent student rows (all mark columns = "A")
+  const absentExcelRows = absentRows.map((s) => {
+    const dataRow = [s.rollNo, s.name];
+    qLabels.forEach(() => {
+      dataRow.push("A", "A", "A");           // Absent for every mark column
+    });
+    dataRow.push("A", "A", "A");             // Total, Max, Percentage
+    return { rollNo: s.rollNo, data: dataRow };
+  });
+
+  // 11. Merge and sort all rows by rollNo numerically
+  const allRows = [...presentRows, ...absentExcelRows].sort((a, b) => {
+    const na = parseInt(a.rollNo) || 0;
+    const nb = parseInt(b.rollNo) || 0;
+    return na - nb;
+  });
+
+  // 12. Build worksheet
+  const wsData = [headers, ...allRows.map((r) => r.data)];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Bold headers
   const range = XLSX.utils.decode_range(ws["!ref"]);
   for (let C = range.s.c; C <= range.e.c; C++) {
     const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
     if (!ws[cellAddress]) continue;
     ws[cellAddress].s = { font: { bold: true } };
   }
+
+  // Auto column widths
   ws["!cols"] = headers.map((h) => ({ wch: Math.max(h.length + 2, 14) }));
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Results");
-  const fileName = `${selectedClass}_${selectedCourse}_${selectedExam}_Results.xlsx`
-    .replace(/\s+/g, "_");
+  const fileName = `${selectedClass}_${selectedCourse}_${selectedExam}_Results.xlsx`.replace(
+    /\s+/g, "_"
+  );
   XLSX.writeFile(wb, fileName);
 };
 
