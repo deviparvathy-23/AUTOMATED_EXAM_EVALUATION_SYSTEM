@@ -316,8 +316,8 @@ router.get("/by-class/:classId", async (req, res) => {
     ).sort({ rollNo: 1 });
     res.json(students);
   } catch (err) {
-    console.error("by-class error:", err.message); // ← add this
-    res.status(500).json({ message: err.message }); // ← return real error
+    console.error("by-class error:", err.message);
+    res.status(500).json({ message: err.message });
   }
 });
 export default router;
