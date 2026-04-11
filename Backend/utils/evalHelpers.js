@@ -226,13 +226,46 @@ CRITICAL OUTPUT RULES:
 - The Total Marks cell MUST be the raw arithmetic sum of all Marks Awarded — do NOT round the total.
 - Rounding rules apply ONLY to individual question marks, never to the Total.
 QUESTION LABEL FORMAT RULES:
-1. Always use the EXACT question number and sub-question label as printed on the question paper.
-2. If the question paper uses Q6(a), Q6(b) — output as Q6A, Q6B (no brackets, uppercase letter).
-3. If the question paper uses Q7.1, Q7.2 — output as Q7.1, Q7.2 (preserve dot notation).
-4. If the question paper uses Q6 a or Q6 a) — normalize to Q6A (remove space, uppercase).
-5. NEVER invent or split question labels. If the question is Q6 as a whole, use Q6 — do not create Q6A, Q6B unless sub-parts are explicitly marked separately on the paper.
-6. All labels must be consistent across ALL students in the same exam — if one student's Q6 is graded as Q6A/Q6B/Q6C, every student's Q6 must be graded as Q6A/Q6B/Q6C.
-7. Use ONLY these formats: Q1, Q2, Q6A, Q6B, Q7.1, Q7.2 — no other variations allowed.
+1. ALWAYS use only the MAIN question number — never split into sub-columns.
+   - Q6(a), Q6(b), Q6(c) → all go under a single Q6 column.
+   - Q7.1, Q7.2, Q7.3    → all go under a single Q7 column.
+   - NEVER create Q6A, Q6B, Q6C as separate columns.
+2. Max Marks for a question = total marks of that question including ALL its sub-parts.
+3. Marks Awarded = total marks awarded across ALL sub-parts of that question.
+4. Justification cell MUST break down every sub-part individually like this:
+
+   (a) [sub-question label]: [marks awarded]/[max marks] — [one line reason]
+   (b) [sub-question label]: [marks awarded]/[max marks] — [one line reason]
+   (c) [sub-question label]: [marks awarded]/[max marks] — [one line reason]
+   Total: [sum]/[max]
+
+ 
+   Example for Q6 with sub-parts a, b, c:
+   (a) Define OS: 2/2 — Correct definition with key terms.
+   (b) Types of OS: 3/5 — Named 3 types but missing explanation.
+   (c) Diagram: 1/3 — Rough diagram, missing labels.
+   Total: 6/10
+
+5. If a question has NO sub-parts, justification is just one line explaining the mark.
+6. For CHOICE questions (Answer Q5 OR Q6):
+   - Evaluate whichever the student attempted.
+   - If student attempted BOTH, evaluate both but count only the higher mark in Total Marks.
+   - In the unchosen question's Justification write: [NOT COUNTED — choice question, lower mark]
+7. For ANY N of M questions (Answer any 5 of 7):
+   - Evaluate ALL attempted questions.
+   - Count only the best N scores toward Total Marks.
+   - In excluded questions' Justification write: [NOT COUNTED — outside best N]
+8. All question labels must be consistent across ALL students in the same exam.
+
+CRITICAL OUTPUT RULES:
+- Line 1 MUST be: MAX_MARKS: [number]
+- Line 2 MUST be blank
+- Line 3 onwards: markdown table starting with | Roll No |
+- ONE complete response — do not stop mid-row
+- NO other text outside the table
+- Total Marks MUST be the raw arithmetic sum of only the counted Marks Awarded — do NOT round the total
+- Rounding rules apply ONLY to individual question marks, NEVER to the Total
+- The scores MUST reflect the strictness level defined above
 `.trim();
 };
 
