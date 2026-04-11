@@ -68,28 +68,6 @@ export function extractTotal(resultTable) {
   // Need at least: header row, separator row, one data row
   if (lines.length < 3) return null;
 
-  // ── Find header row and locate all "Marks Awarded" column indices ──
-  // BUG 1 FIX: Instead of blindly reading the last cell (which may be a
-  // question-label column or include choice-mark columns), we identify
-  // only the "Marks Awarded" columns by name and sum those exclusively.
-  const headerCells = lines[0].split("|").map((c) => c.trim()).filter(Boolean);
-
-  const marksAwardedIndices = headerCells.reduce((acc, cell, idx) => {
-    // Match "Marks Awarded" columns but NOT "Max Marks" columns
-    if (/marks awarded/i.test(cell) && !/max/i.test(cell)) acc.push(idx);
-    return acc;
-  }, []);
-
-  // If we can't find any "Marks Awarded" columns, fall back to last cell of data row
-  if (marksAwardedIndices.length === 0) {
-    const dataRow  = lines[lines.length - 1];
-    const parts    = dataRow.split("|").map((c) => c.trim()).filter(Boolean);
-    const lastCell = parts[parts.length - 1];
-    const n        = Number(String(lastCell).replace(/[^\d.]/g, ""));
-    return Number.isFinite(n) && n > 0 ? n : null;
-  }
-
-  // ── Sum all "Marks Awarded" cells from the last data row ──
   // Skip separator rows (lines that only contain dashes/pipes/spaces/colons)
   const dataRows = lines.slice(1).filter((l) => !/^[\|\s\-:]+$/.test(l));
   if (dataRows.length === 0) return null;
@@ -97,18 +75,16 @@ export function extractTotal(resultTable) {
   const dataRow   = dataRows[dataRows.length - 1];
   const dataCells = dataRow.split("|").map((c) => c.trim()).filter(Boolean);
 
-  let total = 0;
-  for (const idx of marksAwardedIndices) {
-    const cell    = dataCells[idx] ?? "";
-    // BUG 2 FIX: blank cells (not attempted) are treated as 0 instead of NaN
-    const cleaned = String(cell).replace(/[^\d.]/g, "");
-    const val     = cleaned === "" ? 0 : Number(cleaned);
-    total        += Number.isFinite(val) ? val : 0;
-  }
+  const lastCell = dataCells[dataCells.length - 1];
+  if (!lastCell || lastCell.trim() === "") return null;
 
-  return total > 0 ? total : null;
+  const cleaned = String(lastCell).replace(/[^\d.]/g, "");
+
+  if (cleaned === "") return null;
+
+  const n = Number(cleaned);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
-
 export function textToPDFBuffer(text) {
   const doc     = new PDFDocument();
   const buffers = [];
@@ -211,6 +187,14 @@ STEP 1 — READ QUESTION PAPER FIRST:
 STEP 2 — EVALUATE EVERY QUESTION:
 * Evaluate ALL questions — never skip any.
 * Apply the strictness level above to every single mark decision.
+STEP 2B — HANDLE CHOICE / EITHER-OR QUESTIONS:
+* If the question paper says "Answer Q5 OR Q6", evaluate BOTH if the student attempted both,
+  but in the Total, count ONLY the one with the HIGHER marks awarded.
+* If the question paper says "Answer any N out of M questions", evaluate all attempted ones,
+  but in the Total, count ONLY the best N scores.
+* In the table, still output ALL attempted questions with their marks,
+  but mark the excluded ones clearly in the Justification as "[NOT COUNTED – choice question]".
+* The Total Marks cell MUST reflect only the counted questions.
 
 ════════════════════════════════════════════════════════════════
 ⚠️  REMINDER: Apply the ${evalType?.toUpperCase() || "AVERAGE"} strictness level consistently.
@@ -237,7 +221,10 @@ CRITICAL OUTPUT RULES:
 - ONE complete response — do not stop mid-row
 - NO other text outside the table
 - The scores MUST reflect the strictness level above.
+- If question not attempted leave the cell blank
 - If hierarchy (LIBERAL ≥ AVERAGE ≥ STRICT) is violated, evaluation is incorrect.
+- The Total Marks cell MUST be the raw arithmetic sum of all Marks Awarded — do NOT round the total.
+- Rounding rules apply ONLY to individual question marks, never to the Total.
 QUESTION LABEL FORMAT RULES:
 1. Always use the EXACT question number and sub-question label as printed on the question paper.
 2. If the question paper uses Q6(a), Q6(b) — output as Q6A, Q6B (no brackets, uppercase letter).
