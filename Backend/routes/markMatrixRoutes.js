@@ -1,3 +1,4 @@
+// routes/markmatricesroute.js
 import express from "express";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
@@ -73,45 +74,12 @@ const getTeacherPairs = async (teacherId) => {
 };
 
 /* ===============================
-   GET FILTERS
-=============================== */
-router.get("/filters", authTeacher, async (req, res) => {
-  try {
-    const teacherId  = getTeacherIdFromToken(req.user);
-    const validPairs = await getTeacherPairs(teacherId);
-
-    if (!validPairs.length) return res.json([]);
-
-    const filters = [];
-    for (const pair of validPairs) {
-      const rows = await MarkMatrix.find({
-        classId: pair.classId,
-        course:  pair.course,
-      }).select("examType");
-
-      if (rows.length > 0) {
-        filters.push({
-          courseName: pair.course,
-          classId:    pair.classId,
-          exams:      [...new Set(rows.map((r) => r.examType))],
-        });
-      }
-    }
-
-    return res.json(filters);
-  } catch (err) {
-    console.error("Filter load error:", err);
-    return res.status(500).json({ message: "Failed to load filters", error: err.message });
-  }
-});
-
-/* ===============================
    PARSE RESULT TABLE
    Handles:
-   - Format A: data row repeats Q label → | 61 | Q1 | 3 | 3 | Justification | Q2 | ...
-               also supports sub-question labels → | 61 | Q6a | 3 | 3 | Justification | Q6b | ...
-   - Format B: data row skips Q label   → | 10 | 1  | 3 | 3 | Justification | 2  | ...
-   - Pipe characters INSIDE justification text (e.g. S→abAA|ab)
+   - Sub-questions collapsed under main question number
+   - Full sub-part breakdown inside Justification cell
+   - Choice/optional questions marked [NOT COUNTED]
+   - Pipe characters INSIDE justification text
 =============================== */
 const parseResultTableForDisplay = (resultTable) => {
   if (!resultTable || typeof resultTable !== "string") return { questions: [] };
@@ -127,9 +95,11 @@ const parseResultTableForDisplay = (resultTable) => {
   const dataRow   = rows[2];
 
   const headerParts = headerRow.split("|").map((c) => c.trim());
+
+  // Match only main question labels: Q1, Q2, Q10 etc. (no sub-labels like Q6A, Q6B)
   const qLabels = headerParts
-    .filter((c) => /^(q\d+[\s.]?[a-z\d]*|[a-z])$/i.test(c))
-    .map((c) => c.replace(/\s+/g, "").toUpperCase());
+    .filter((c) => /^Q\d+$/i.test(c))
+    .map((c) => c.toUpperCase());
 
   if (!qLabels.length) return { questions: [] };
 
@@ -139,7 +109,6 @@ const parseResultTableForDisplay = (resultTable) => {
 
   const isFormatA = new RegExp(`\\|\\s*${escapedLabels[0]}\\s*\\|`, "i").test(normalizedDataRow);
 
-  // ✅ must be declared HERE, before the if/else
   const questions = [];
 
   if (isFormatA) {
@@ -191,6 +160,108 @@ const parseResultTableForDisplay = (resultTable) => {
 
   return { questions };
 };
+
+/* ===============================
+   COMPUTE TOTAL FROM PARSED QUESTIONS
+   - Skips questions marked [NOT COUNTED] in justification
+   - Skips NaN marks (not attempted)
+   - Returns sum of valid marks only
+=============================== */
+const computeTotalFromQuestions = (questions) => {
+  return questions.reduce((sum, q) => {
+    const reason = String(q.deductionReason || "").toUpperCase();
+
+    // Skip choice/optional questions that were not counted
+    if (reason.includes("NOT COUNTED")) return sum;
+
+    // Skip not attempted
+    if (isNaN(q.marks)) return sum;
+
+    return sum + q.marks;
+  }, 0);
+};
+
+/* ===============================
+   EXTRACT TOTAL FROM RAW RESULT TABLE STRING
+   - Finds "Total Marks" column by header name first
+   - Falls back to last purely numeric cell
+=============================== */
+export const extractTotal = (resultTable) => {
+  if (!resultTable) return null;
+
+  const lines = resultTable
+    .split("\n").map((l) => l.trim()).filter((l) => l.startsWith("|"));
+
+  if (lines.length < 3) return null;
+
+  // Skip separator rows
+  const dataRows = lines.slice(1).filter((l) => !/^[\|\s\-:]+$/.test(l));
+  if (dataRows.length === 0) return null;
+
+  const dataRow = dataRows[dataRows.length - 1];
+
+  // ── Try to find "Total Marks" column by header name ──────────────────────
+  const headerRow   = lines[0];
+  const headerCells = headerRow.split("|").map((c) => c.trim());
+  const totalColIdx = headerCells.findIndex((c) => /^total\s*marks$/i.test(c));
+
+  if (totalColIdx !== -1) {
+    const dataCells = dataRow.split("|").map((c) => c.trim());
+    const cell      = dataCells[totalColIdx] ?? "";
+    const cleaned   = String(cell).replace(/[^\d.]/g, "");
+    if (cleaned !== "") {
+      const n = Number(cleaned);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+  }
+
+  // ── Fallback: scan from end for last purely numeric cell ──────────────────
+  // Avoids picking up max marks or justification fragments
+  const dataCells = dataRow.split("|").map((c) => c.trim()).filter(Boolean);
+  for (let i = dataCells.length - 1; i >= 0; i--) {
+    const cell    = dataCells[i];
+    const cleaned = String(cell).replace(/[^\d.]/g, "");
+    if (cleaned === "" || cleaned !== cell.trim()) continue;
+    const n = Number(cleaned);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+
+  return null;
+};
+
+/* ===============================
+   GET FILTERS
+=============================== */
+router.get("/filters", authTeacher, async (req, res) => {
+  try {
+    const teacherId  = getTeacherIdFromToken(req.user);
+    const validPairs = await getTeacherPairs(teacherId);
+
+    if (!validPairs.length) return res.json([]);
+
+    const filters = [];
+    for (const pair of validPairs) {
+      const rows = await MarkMatrix.find({
+        classId: pair.classId,
+        course:  pair.course,
+      }).select("examType");
+
+      if (rows.length > 0) {
+        filters.push({
+          courseName: pair.course,
+          classId:    pair.classId,
+          exams:      [...new Set(rows.map((r) => r.examType))],
+        });
+      }
+    }
+
+    return res.json(filters);
+  } catch (err) {
+    console.error("Filter load error:", err);
+    return res.status(500).json({ message: "Failed to load filters", error: err.message });
+  }
+});
+
 /* ===============================
    GET RESULTS
 =============================== */
@@ -226,10 +297,21 @@ router.get("/results", authTeacher, async (req, res) => {
           normalize(row.classId) === reqClass
       )
       .map((row) => {
-        const parsed   = parseResultTableForDisplay(row.resultTable);
-        const total    = row.totalMarks;
-        const maxTotal = row.maxMarks;
-        const pct      = maxTotal > 0 ? Math.round((total / maxTotal) * 100) : 0;
+        // Parse questions from resultTable string
+        const parsed = parseResultTableForDisplay(row.resultTable);
+
+        // ── Recompute total from parsed questions ──────────────────────────
+        // This overrides the stored totalMarks which may be wrong due to
+        // choice question double-counting or extraction bugs.
+        // NOT COUNTED questions (choice/optional) are excluded from sum.
+        const recomputedTotal = computeTotalFromQuestions(parsed.questions);
+
+        // Use recomputed total if valid, otherwise fall back to stored value
+        const total    = recomputedTotal > 0 ? recomputedTotal : (row.totalMarks ?? 0);
+        const maxTotal = row.maxMarks ?? 0;
+        const pct      = maxTotal > 0
+          ? Math.round((total / maxTotal) * 100)
+          : 0;
 
         const { questions: _old, ...rowWithoutQuestions } = row;
 
@@ -252,24 +334,6 @@ router.get("/results", authTeacher, async (req, res) => {
     return res.json(filteredRows);
   } catch (err) {
     console.error("Results load error:", err);
-    return res.status(500).json({ message: "Failed to load results", error: err.message });
-  }
-});
-router.get("/results", authTeacher, async (req, res) => {
-  try {
-    console.log("Results query:", req.query);
-    const teacherId = getTeacherIdFromToken(req.user);
-    console.log("Teacher ID:", teacherId);
-
-    const validPairs = await getTeacherPairs(teacherId);
-    console.log("Valid pairs:", validPairs);
-
-    // ... rest of route
-    console.log("Raw rows found:", rows.length);
-    console.log("Filtered rows:", filteredRows.length);
-
-  } catch (err) {
-    console.error("Results load error FULL:", err); // <-- check Render logs for this
     return res.status(500).json({ message: "Failed to load results", error: err.message });
   }
 });
