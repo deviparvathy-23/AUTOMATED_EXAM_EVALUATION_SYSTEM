@@ -20,20 +20,20 @@ const keyCooldowns = new Map(); // label → expiry timestamp (ms)
 /* ── Load keys ───────────────────────────────────────────────────────────── */
 async function loadKeys(force = false) {
   if (!force && cachedKeys && Date.now() < cacheExpiry) return cachedKeys;
-  const res   = await client.send(new GetSecretValueCommand({ SecretId: SECRET_ID }));
-  cachedKeys  = JSON.parse(res.SecretString);
-  cacheExpiry = Date.now() + 60_000;
+  const res    = await client.send(new GetSecretValueCommand({ SecretId: SECRET_ID }));
+  const parsed = JSON.parse(res.SecretString);
+  cachedKeys   = parsed.gemini_keys;   // ← unwrap here
+  cacheExpiry  = Date.now() + 60_000;
   return cachedKeys;
 }
 
-/* ── Save keys ───────────────────────────────────────────────────────────── */
 async function saveKeys(keys) {
   cachedKeys  = keys;
   cacheExpiry = Date.now() + 60_000;
   await client.send(
     new PutSecretValueCommand({
       SecretId:     SECRET_ID,
-      SecretString: JSON.stringify(keys),
+      SecretString: JSON.stringify({ gemini_keys: keys }),   // ← re-wrap here
     })
   );
 }
