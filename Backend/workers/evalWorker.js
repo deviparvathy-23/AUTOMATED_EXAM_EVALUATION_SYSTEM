@@ -14,7 +14,7 @@ import {
 } from "../utils/evalHelpers.js";
 
 const BUCKET = process.env.S3_BUCKET;
-const MODEL  = "gemini-3.6-flash";
+const MODEL  = "gemini-3.1-flash-lite";
 
 /* ── Reference answer generator ─────────────────────────────────────────── */
 async function generateReferenceAnswers(
